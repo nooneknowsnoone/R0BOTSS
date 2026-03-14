@@ -1,0 +1,142 @@
+body {
+  padding: 20px;
+  background: linear-gradient(to bottom right, #0b0c2a, #1f1b3a);
+  font-family: 'Poppins', sans-serif;
+  color: #f5f5f5;
+}
+.navbar {
+  background-color: #1b1530 !important;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+.navbar-brand, .navbar-nav .nav-link {
+  color: #ffffff !important;
+}
+.navbar-nav .nav-link:hover {
+  color: #c084fc !important;
+}
+.dropdown-menu {
+  background-color: #271f46;
+  border: none;
+}
+.dropdown-item {
+  color: #ccc;
+}
+.dropdown-item:hover {
+  background-color: #3a2c5c;
+  color: white;
+}
+.container {
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(192, 132, 252, 0.1);
+  padding: 20px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+h1 {
+  color: #c084fc;
+}
+label {
+  color: #ddd;
+}
+.centered-textarea {
+  display: block;
+  margin: 0 auto;
+  width: 100%;
+  min-height: 150px;
+  padding: 10px;
+  box-sizing: border-box;
+  border: 1px solid #ced4da;
+  border-radius: 5px;
+  resize: none;
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #fff;
+}
+.btn-primary {
+  background-color: #8b5cf6;
+  border: 1px solid #8b5cf6;
+}
+.btn-primary:hover {
+  background-color: #7c3aed;
+  border: 1px solid #7c3aed;
+}
+.success-message {
+  color: #22c55e;
+  margin-top: 10px;
+}
+.footer {
+  background-color: rgba(255, 255, 255, 0.07);
+  padding: 10px;
+  text-align: center;
+  font-size: 16px;
+  color: #ccc;
+  margin-top: 50px;
+  border-top: 1px solid #444;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+}
+.footer p {
+  margin: 0;
+  display: inline-block;
+  margin-right: 30px;
+}
+.container-buttons {
+  margin-top: 20px;
+  text-align: center;
+}
+.container-buttons .btn {
+  margin: 5px;
+}
+#result {
+  padding: 10px;
+  margin-top: 20px;
+  border-radius: 5px;
+}
+.center-placeholder::placeholder {
+  text-align: center;
+  color: #ccc;
+}
+.form-check {
+  display: flex;
+  margin-top: 10px;
+  padding: 14px;
+  align-items: center;
+  border: 1px solid #555;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+.form-check:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: #8b5cf6;
+}
+.form-check-input {
+  margin-right: 10px;
+  opacity: 0;
+}
+.disable {
+  display: none;
+}
+#inputOfPrefix, #inputOfAdmin {
+  padding: 13px;
+  width: 200px;
+  border: 1px solid #666;
+  border-radius: 8px;
+  cursor: pointer;
+  background-color: rgba(0, 0, 0, 0.2);
+  color: #fff;
+}
+#listOfCommands, #listOfCommandsEvent, #prefixOfCommands, #adminOfCommands {
+  border: none !important;
+  box-shadow: none !important;
+}
+#json-data {
+  background-image: url('https://cdnb.artstation.com/p/assets/images/images/066/149/065/original/killer-rabbit-media-chinese-alleyway-export.gif?1692171513');
+  background-size: cover;
+  background-repeat: no-repeat;
+  border-color: #8b5cf6;
+}
