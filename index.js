@@ -11,6 +11,10 @@ const PORT = 3000;
 // Store bot instances and their states
 let botInstances = new Map(); // Key: adminUID, Value: { api, stopListening, prefix, adminUID, commands }
 
+// Global commands storage for all loaded commands
+global.allCommands = new Map(); // Store all available commands with their info
+global.loadedCommands = new Map(); // Store currently loaded commands per bot instance
+
 app.use(bodyParser.json());
 app.use(express.static('public')); // Serve frontend from public folder
 
@@ -19,15 +23,45 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// API endpoint to list available commands
+// API endpoint to list ALL available commands from cmd folder
 app.get('/api/commands', async (req, res) => {
     try {
         const files = await fs.readdir('./cmd');
-        const commands = files
-            .filter(f => f.endsWith('.js'))
-            .map(f => f.replace('.js', ''));
-        res.json({ success: true, commands });
+        const commands = [];
+        
+        for (const file of files) {
+            if (file.endsWith('.js')) {
+                const commandName = file.replace('.js', '');
+                try {
+                    // Clear cache to get fresh command data
+                    delete require.cache[require.resolve(`./cmd/${file}`)];
+                    const command = require(`./cmd/${file}`);
+                    
+                    // Store command info globally
+                    global.allCommands.set(commandName, {
+                        name: commandName,
+                        description: command.description || 'No description',
+                        usage: command.usage || '',
+                        aliases: command.aliases || [],
+                        adminOnly: command.adminOnly || false,
+                        filename: file
+                    });
+                    
+                    commands.push(commandName);
+                } catch (cmdError) {
+                    console.error(`Error reading command ${file}:`, cmdError);
+                }
+            }
+        }
+        
+        console.log('📚 Available commands:', commands);
+        res.json({ 
+            success: true, 
+            commands: commands,
+            commandDetails: Object.fromEntries(global.allCommands)
+        });
     } catch (error) {
+        console.error('Error loading commands:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -54,35 +88,64 @@ app.post('/api/start-bot', async (req, res) => {
         // Load commands based on selection
         const commandFiles = await fs.readdir('./cmd');
         const commands = new Map();
-        const validCommandFiles = [];
+        const loadedCommandNames = [];
         
         for (const file of commandFiles) {
             if (file.endsWith('.js')) {
                 const commandName = file.replace('.js', '');
+                
                 // Check if command should be loaded
-                if (selectedCommands === 'all' || 
-                    (Array.isArray(selectedCommands) && selectedCommands.includes(commandName))) {
+                const shouldLoad = selectedCommands === 'all' || 
+                    (Array.isArray(selectedCommands) && selectedCommands.includes(commandName));
+                
+                if (shouldLoad) {
                     try {
                         // Clear require cache to reload fresh command
                         delete require.cache[require.resolve(`./cmd/${file}`)];
                         const command = require(`./cmd/${file}`);
-                        commands.set(commandName, command);
-                        validCommandFiles.push(commandName);
-                        console.log(`Loaded command: ${commandName}`);
+                        
+                        // Store command with metadata
+                        commands.set(commandName, {
+                            execute: command.execute,
+                            description: command.description,
+                            usage: command.usage,
+                            aliases: command.aliases || [],
+                            adminOnly: command.adminOnly || false
+                        });
+                        
+                        loadedCommandNames.push(commandName);
+                        console.log(`✅ Loaded command: ${commandName}`);
+                        
+                        // Also register aliases
+                        if (command.aliases && Array.isArray(command.aliases)) {
+                            command.aliases.forEach(alias => {
+                                commands.set(alias, {
+                                    execute: command.execute,
+                                    description: command.description,
+                                    usage: command.usage,
+                                    isAlias: true,
+                                    originalCommand: commandName
+                                });
+                                console.log(`   ↳ Alias: ${alias} -> ${commandName}`);
+                            });
+                        }
                     } catch (cmdError) {
-                        console.error(`Error loading command ${file}:`, cmdError);
+                        console.error(`❌ Error loading command ${file}:`, cmdError);
                     }
                 }
             }
         }
 
-        console.log(`Loading ${commands.size} commands for admin ${adminUID}:`, validCommandFiles);
+        console.log(`📦 Loaded ${commands.size} commands for admin ${adminUID}:`, loadedCommandNames);
 
         // Login with provided appstate
         login({ appState: appStateArray }, (err, api) => {
             if (err) {
                 console.error('Login error:', err);
-                return res.status(500).json({ success: false, error: 'Failed to login with provided appstate' });
+                return res.status(500).json({ 
+                    success: false, 
+                    error: 'Failed to login with provided appstate. Check if cookies are valid.' 
+                });
             }
 
             // Set bot options
@@ -91,6 +154,9 @@ app.post('/api/start-bot', async (req, res) => {
                 selfListen: false
             });
 
+            // Store commands in a closure for the listener
+            const botCommands = commands;
+            
             // Start listening
             const stopListening = api.listenMqtt(async (err, event) => {
                 if (err) {
@@ -106,26 +172,35 @@ app.post('/api/start-bot', async (req, res) => {
 
                 // Parse command
                 const args = message.slice(prefix.length).trim().split(/ +/);
-                const commandName = args.shift().toLowerCase();
+                let commandName = args.shift().toLowerCase();
 
-                // Check if command exists
-                if (!commands.has(commandName)) return;
+                // Check if command exists (including aliases)
+                if (!botCommands.has(commandName)) return;
 
                 try {
-                    const command = commands.get(commandName);
+                    const command = botCommands.get(commandName);
                     
-                    // Execute command with context
+                    // Check if command is admin-only
+                    if (command.adminOnly && event.senderID !== adminUID) {
+                        return api.sendMessage("❌ This command is only for bot admin!", event.threadID);
+                    }
+
+                    // Execute command with full context
                     await command.execute({
                         api,
                         event,
                         args,
                         reply: (text) => api.sendMessage(text, event.threadID),
                         send: (text, threadID) => api.sendMessage(text, threadID || event.threadID),
-                        adminUID
+                        adminUID,
+                        commandName: command.isAlias ? command.originalCommand : commandName
                     });
+                    
+                    console.log(`⚡ Executed command: ${commandName} by ${event.senderID}`);
+                    
                 } catch (cmdErr) {
                     console.error(`Error executing command ${commandName}:`, cmdErr);
-                    api.sendMessage(`Error executing command: ${cmdErr.message}`, event.threadID);
+                    api.sendMessage(`❌ Error executing command: ${cmdErr.message}`, event.threadID);
                 }
             });
 
@@ -135,13 +210,16 @@ app.post('/api/start-bot', async (req, res) => {
                 stopListening,
                 prefix,
                 adminUID,
-                commands: Array.from(commands.keys())
+                commands: loadedCommandNames,
+                commandCount: commands.size,
+                startTime: Date.now()
             });
 
             res.json({ 
                 success: true, 
-                message: `Bot started successfully with ${commands.size} commands. Prefix: "${prefix}"`,
-                loadedCommands: Array.from(commands.keys())
+                message: `✅ Bot started successfully with ${loadedCommandNames.length} commands. Prefix: "${prefix}"`,
+                loadedCommands: loadedCommandNames,
+                commandCount: loadedCommandNames.length
             });
         });
 
@@ -159,7 +237,7 @@ app.post('/api/stop-bot', (req, res) => {
         const bot = botInstances.get(adminUID);
         if (bot.stopListening) bot.stopListening();
         botInstances.delete(adminUID);
-        res.json({ success: true, message: 'Bot stopped successfully' });
+        res.json({ success: true, message: '⏹️ Bot stopped successfully' });
     } else {
         res.status(404).json({ success: false, error: 'No running bot found for this admin' });
     }
@@ -171,18 +249,55 @@ app.get('/api/status/:adminUID', (req, res) => {
     const bot = botInstances.get(adminUID);
     
     if (bot) {
+        const uptime = Math.floor((Date.now() - bot.startTime) / 1000);
+        const hours = Math.floor(uptime / 3600);
+        const minutes = Math.floor((uptime % 3600) / 60);
+        
         res.json({ 
             success: true, 
             running: true, 
             prefix: bot.prefix,
-            commands: bot.commands 
+            commands: bot.commands,
+            commandCount: bot.commandCount,
+            uptime: `${hours}h ${minutes}m`
         });
     } else {
         res.json({ success: true, running: false });
     }
 });
 
+// API endpoint to get command details
+app.get('/api/command/:name', async (req, res) => {
+    const { name } = req.params;
+    
+    try {
+        const files = await fs.readdir('./cmd');
+        const commandFile = files.find(f => f.replace('.js', '') === name);
+        
+        if (commandFile) {
+            delete require.cache[require.resolve(`./cmd/${commandFile}`)];
+            const command = require(`./cmd/${commandFile}`);
+            
+            res.json({
+                success: true,
+                command: {
+                    name,
+                    description: command.description || 'No description',
+                    usage: command.usage || '',
+                    aliases: command.aliases || [],
+                    adminOnly: command.adminOnly || false
+                }
+            });
+        } else {
+            res.status(404).json({ success: false, error: 'Command not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Frontend available at http://localhost:${PORT}`);
+    console.log(`\n🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📁 Public folder: ${path.join(__dirname, 'public')}`);
+    console.log(`⚡ Bot controller ready!\n`);
 });
