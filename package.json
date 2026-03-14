@@ -1,0 +1,12 @@
+{
+  "name": "biar-fca-bot",
+  "version": "1.0.0",
+  "description": "A simple Messenger bot using biar-fca library",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "^1.13.6"
+  }
+}
