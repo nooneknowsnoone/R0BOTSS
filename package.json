@@ -9,7 +9,6 @@
   "dependencies": {
     "@types/node": "^18.0.6",
     "axios": "^1.13.6",
-    "biar-fca": "^1.0.0",
     "bluebird": "^3.7.2",
     "body-parser": "^1.20.2",
     "canvas": "^2.9.3",
