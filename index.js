@@ -1,40 +1,30 @@
-const fs = require("fs");
-const path = require("path");
-const express = require("express");
-const { spawn } = require('child_process');
+const { spawn } = require("child_process");
+const path = require('path');
 
-// ==================== CONFIGURATION ====================
-const APPSTATE_PATH = path.join(__dirname, "appstate.json");
-const SETTINGS_PATH = path.join(__dirname, "settings.json");
-const COMMANDS_DIR = path.join(__dirname, "cmd");
-const CONFIG_DIR = path.join(__dirname, "configs");
-const ADMINS_PATH = path.join(CONFIG_DIR, "admins.json");
-const ACTIVE_COMMANDS_PATH = path.join(CONFIG_DIR, "active-commands.json");
-const LOCAL_BIAR_FCA_PATH = path.join(__dirname, "biar-fca");
+const SCRIPT_FILE = "auto.js";
+const SCRIPT_PATH = path.join(__dirname, SCRIPT_FILE);
 
-const WEB_PORT = 3000;
-let botProcess = null;
-let isBotRunning = false;
 
-// Ensure configs directory exists
-if (!fs.existsSync(CONFIG_DIR)) {
-    fs.mkdirSync(CONFIG_DIR, { recursive: true });
+function start() {
+    const main = spawn("node", [SCRIPT_PATH], {
+        cwd: __dirname,
+        stdio: "inherit",
+        shell: true
+    });
+
+    main.on("close", (exitCode) => {
+        if (exitCode === 0) {
+            console.log("Main process exited with code 0");
+        } else if (exitCode === 1) {
+            console.log("Main process exited with code 1. Restarting...");
+            start();
+        }  else {
+            console.error(`Main process exited with code ${exitCode}`);
+        }
+    });
 }
 
-// Initialize config files if they don't exist
-if (!fs.existsSync(ADMINS_PATH)) {
-    fs.writeFileSync(ADMINS_PATH, JSON.stringify([], null, 2));
-}
-
-// ==================== EXPRESS WEB SERVER ====================
-const app = express();
-app.use(express.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Serve the control panel HTML
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'control-panel.html'));
-});
+start();});
 
 // API Routes
 app.get('/api/settings', (req, res) => {
