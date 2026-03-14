@@ -1,495 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <title>🤖 | Automated Facebook Bot Messenger</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Home · GPT‑4 Config</title>
-  <!-- Bootstrap, Font Awesome, Poppins (all in one file) -->
+  <link rel="icon" href="https://i.imgur.com/BNKq0fl.jpeg" type="image/jpeg">
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    /* === merged styles.css === */
-    body {
-      padding: 20px;
-      background-color: #f8f9fa;
-      font-family: 'Poppins', sans-serif;
-    }
-    .container {
-      background-color: #ffffff;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-      padding: 20px;
-      margin-top: 20px;
-      margin-bottom: 20px;
-    }
-    h1 {
-      color: #343a40;
-    }
-    label {
-      color: #495057;
-    }
-    .centered-textarea {
-      display: block;
-      margin: 0 auto;
-      width: 100%;
-      min-height: 150px;
-      padding: 10px;
-      box-sizing: border-box;
-      border: 1px solid #ced4da;
-      border-radius: 5px;
-      resize: none;
-    }
-    .btn-primary {
-      background-color: #007bff;
-      border: 1px solid #007bff;
-    }
-    .btn-primary:hover {
-      background-color: #0056b3;
-      border: 1px solid #0056b3;
-    }
-    .success-message {
-      color: green;
-      margin-top: 10px;
-    }
-    .footer {
-      background-color: rgba(255, 255, 255, 0.7);
-      padding: 10px;
-      text-align: center;
-      font-size: 16px;
-      color: #555;
-      margin-top: 50px;
-      border-top: 1px solid #ccc;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-    }
-    .footer p {
-      margin: 0;
-      display: inline-block;
-      margin-right: 30px;
-    }
-    .container-buttons {
-      margin-top: 20px;
-      text-align: center;
-    }
-    .container-buttons .btn {
-      margin: 5px;
-    }
-    #result {
-      padding: 10px;
-      margin-top: 20px;
-      border-radius: 5px;
-    }
-    .center-placeholder::placeholder {
-      text-align: center;
-    }
-
-    .form-check {
-      display: flex;
-      margin-top: 10px;
-      padding: 14px;
-      align-items: center;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, border-color 0.3s ease; 
-      border-color: #ccc;
-      background-color: #fff;
-    }
-
-    .form-check:hover {
-      background-color: #f0f0f0; 
-      border-color: #333; 
-    }
-
-    .form-check-input {
-      margin-right: 10px; 
-      opacity: 0;
-    }
-
-    .disable {
-      display: none;
-    }
-
-    #inputOfPrefix, #inputOfAdmin {
-      padding: 13px;
-      width: 200px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, border-color 0.3s ease; 
-      border-color: #ccc;
-      background-color: #fff;
-    }
-    #listOfCommands, #listOfCommandsEvent, #prefixOfCommands, #adminOfCommands {
-      border: none !important;
-    }
-
-    #listOfCommands:not(.modal), #listOfCommandsEvent:not(.modal), #prefixOfCommands:not(.modal), #adminOfCommands:not(.modal) {
-      box-shadow: none !important;
-    }
-
-    /* tiny spacing fix */
-    .navbar-brand { font-weight: 500; }
-  </style>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-
-<!-- navigation -->
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
-  <a class="navbar-brand" href="#">Home</a>
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-    <span class="navbar-toggler-icon"></span>
-  </button>
-  <div class="collapse navbar-collapse justify-content-end" id="navbarNav" style="margin-right: 70px;">
-    <ul class="navbar-nav">
-      <li class="nav-item active">
-        <a class="nav-link" href="/">Home <span class="sr-only">(current)</span></a>
-      </li>
-      <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Features</a>
-        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-          <a class="dropdown-item" href="#">Cookies Extractor</a>
-          <div class="dropdown-divider"></div>
-          <a class="dropdown-item" href="/step_by_step_guide">Step-by-Step Guide</a>
-        </div>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="online_user">Active</a>
-      </li>
-    </ul>
-  </div>
-</nav>
-
-<!-- main json container -->
-<div class="container">
-  <h1 class="col text-center" style="font-size: 20px; padding: 10px;">GPT - 4</h1>
-  <form id="json-form" onsubmit="submitForm(event)">
-    <div class="row">
-      <div class="col-md-12">
-        <textarea id="json-data" class="form-control centered-textarea center-placeholder" placeholder="Paste your cookie / state JSON here"></textarea>
-      </div>
+  <nav class="navbar navbar-expand-lg navbar-dark">
+    <a class="navbar-brand" href="#">🤖 Autobot 2.0</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav" style="margin-right: 70px;">
+      <ul class="navbar-nav">
+        <li class="nav-item active"><a class="nav-link" href="/">Home</a></li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown">Features</a>
+          <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+            <a class="dropdown-item" href="#">Cookies Extractor</a>
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item" href="/step_by_step_guide">Step-by-Step Guide</a>
+   <li class="nav-item"><a class="nav-link" href="https://wildan-suldyir-apis.vercel.app/">API</a></li>
+ <li class="nav-item"><a class="nav-link" href="site">Autobot</a></li>
+<li class="nav-item"><a class="nav-link" href="online_user">Active</a></li>
+          </div>
+        </li>
+      </ul>
     </div>
-  </form>
-  <p style="margin-top: 10px">Greetings! Begin by entering your cookie. Scroll down to carefully review our Terms and Privacy.</p>
-</div>
+  </nav>
 
-<!-- terms + command selectors -->
-<div class="container">
-  <h1 class="col text-center" style="font-size: 20px; padding: 10px;">Terms and Conditions and Privacy Policy</h1>
-  <p>Upon deployment or logging in, your chatbot connection remains active unless you personally access the bot's account or modify the password. This measure is in place to ensure the seamless operation and security of the chatbot.</p>
-  <p>Exercise caution and refrain from sharing your cookie with any third party. Your cookie contains sensitive information crucial to the confidentiality and security of your account and the connected chatbot.</p>
-  <p>As the service provider, we disclaim responsibility for any unauthorized account access. Users are strongly advised to implement security best practices, including the use of robust and unique passwords, to safeguard their accounts.</p>
-  <p>Accessing the bot's account may lead to a disruption in service. It is strongly recommended not to attempt to access the bot's account to maintain the continuous functionality of the chatbot.</p>
-  <p>If the chatbot is unresponsive, kindly return to this website. If issues persist, consider changing the account to ensure uninterrupted service.</p>
-  <p>We, as the service provider, disclaim responsibility for any account locking or suspension on the provided account. Users are expected to adhere to the terms of service of the hosting platform.</p>
-  <p>For added security, it is highly recommended to use dummy or disposable accounts when interacting with the chatbot.</p>
-  <p>Users are strictly prohibited from employing the chatbot for malicious activities. Violation of this rule may result in the termination of access to the chatbot and may have legal consequences.</p>
-
-  <!-- command lists will be filled by javascript -->
-  <div class="container" id="listOfCommands">
-    <h1 style="font-size: 16px; padding: 10px;">Please choose your commands by tapping on the respective options.</h1>
-    <button class="btn btn-primary" type="button" onclick="selectAllCommands()">Select all commands</button>
-    <!-- dynamic command items injected here -->
+  <div class="container">
+    <h2 class="text-center">ENTER APPSTATE</h2>
+    <form id="json-form" onsubmit="submitForm(event)">
+      <textarea id="json-data" class="form-control centered-textarea center-placeholder" placeholder=""></textarea>
+    </form>
+    <p>Greetings! Begin by entering your cookie. Scroll down to carefully review our Terms and Privacy.</p>
   </div>
 
-  <div class="container" id="listOfCommandsEvent">
-    <h1 style="font-size: 16px; padding: 10px;">Please choose your event commands by tapping on the respective options.</h1>
-    <button class="btn btn-primary" type="button" onclick="selectAllEvents()">Select all events</button>
-    <!-- dynamic event items injected here -->
+  <div class="container">
+    <h1 class="text-center" style="font-size: 20px;">Terms and Conditions and Privacy Policy</h1>
+    <p>* Persistent Connection: Your chatbot stays active post-login, unless you change the password.</p>
+    <p>* Cookie Security: Never share your cookie; it's vital for your account's security.</p>
+    <p>* Strong Passwords: Use unique, robust passwords. Avoid Direct Bot Access: Doing so may disrupt service.</p>
+    <p>* Troubleshooting: If the bot is unresponsive, return to the website. If problems persist, change the account.</p>
+    <p>* Dummy Accounts: Use disposable accounts for added security.</p>
+    <p>* No Malicious Use: Malicious activity will result in termination and potential legal action.</p>
+    <p>* Disclaimers: We are not responsible for unauthorized access, account locking, or hosting platform actions.</p>
+    <p>* Terms of Service: Adhere to hosting platform terms.</p>
+
+    <div id="listOfCommands">
+      <h1 style="font-size: 16px;">Choose your commands:</h1>
+      <button class="btn btn-primary" onclick="selectAllCommands()">Select all commands</button>
+    </div>
+
+    <div id="listOfCommandsEvent">
+      <h1 style="font-size: 16px;">Choose your event commands:</h1>
+      <button class="btn btn-primary" onclick="selectAllEvents()">Select all events</button>
+    </div>
+
+    <div id="prefixOfCommands">
+      <h1 style="font-size: 16px;">Prefix (optional):</h1>
+      <input type="text" id="inputOfPrefix">
+    </div>
+
+    <div id="adminOfCommands">
+      <h1 style="font-size: 16px;">Admin UID (important):</h1>
+      <input type="text" id="inputOfAdmin">
+    </div>
+
+    <label style="font-size: 14px; display: flex; align-items: center; padding: 22px;">
+      <input type="checkbox" id="agreeCheckbox" style="margin-right: 10px;">
+      Checking this box certifies that I have read, understood, and agreed to the Terms and Conditions.
+    </label>
+
+    <div class="text-center">
+      <button class="btn btn-primary" onclick="State()" disabled id="submitButton" style="width: 100%">Submit</button>
+    </div>
   </div>
 
-  <div class="container" id="prefixOfCommands">
-    <h1 style="font-size: 16px; padding: 10px;">Please provide a prefix (optional). If you choose not to, entering 'non-prefix' will be considered as your input</h1>
-    <input type="text" id="inputOfPrefix" placeholder="e.g. ! or non-prefix">
+  <div id="result" class="container text-center" style="display: none;"></div>
+
+  <div class="footer">
+    <p>Time: <span id="time"></span></p>
+    <p>Ping: <span id="ping"></span></p>
   </div>
 
-  <div class="container" id="adminOfCommands">
-    <h1 style="font-size: 16px; padding: 10px;">Please provide an uid (optional). If you choose not to, entering 'default' will be considered as your input</h1>
-    <input type="text" id="inputOfAdmin" placeholder="e.g. 1000... or default">
-  </div>
-
-  <!-- agree checkbox -->
-  <label style="font-size: 14px; display: flex; align-items: center; padding: 22px;">
-    <input type="checkbox" id="agreeCheckbox" style="margin-right: 10px;"> Checking this box certifies that I have read, understood, and agreed to the Terms and Conditions.
-  </label>
-
-  <div class="col text-center">
-    <button class="btn btn-primary" onclick="State()" disabled id="submitButton" style="width: 100%">Submit</button>
-  </div>
-</div>
-
-<!-- result area (hidden initially) -->
-<div id="result" class="container text-center" style="display: none;"></div>
-
-<!-- fixed footer with time/ping -->
-<div class="footer">
-  <p>Time: <span id="time"></span></p>
-  <p>Ping: <span id="ping"></span></p>
-</div>
-
-<!-- scripts: jQuery, Popper, Bootstrap + our inline script (all in one) -->
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
-
-<script>
-  // ==================== unified script ====================
-
-  (function() {
-    // ----- initial state -----
-    let Commands = [{
-      'commands': []
-    }, {
-      'handleEvent': []
-    }];
-
-    // ----- DOM refs -----
-    const agreeCheckbox = document.getElementById('agreeCheckbox');
-    const submitBtn = document.getElementById('submitButton');
-    const jsonInput = document.getElementById('json-data');
-    const resultDiv = document.getElementById('result');
-
-    // ----- toggle submit based on agreement -----
-    agreeCheckbox.addEventListener('change', function() {
-      submitBtn.disabled = !this.checked;
-    });
-
-    // ----- ping measurement -----
-    function measurePing() {
-      const xhr = new XMLHttpRequest();
-      let startTime, endTime;
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-          endTime = Date.now();
-          const pingTime = endTime - startTime;
-          document.getElementById("ping").textContent = pingTime + " ms";
-        }
-      };
-      xhr.open("GET", location.href + "?t=" + new Date().getTime());
-      startTime = Date.now();
-      xhr.send();
-    }
-    setInterval(measurePing, 1000);
-
-    // ----- manila time update -----
-    function updateTime() {
-      const now = new Date();
-      const options = {
-        timeZone: 'Asia/Manila',
-        hour12: true,
-        hour: 'numeric',
-        minute: 'numeric',
-        second: 'numeric'
-      };
-      const formattedTime = now.toLocaleString('en-US', options);
-      document.getElementById('time').textContent = formattedTime;
-    }
-    updateTime();
-    setInterval(updateTime, 1000);
-
-    // ----- show ads (redirect) -----
-    function showAds() {
-      var ads = [
-        'https://bit.ly/43yn66n',
-        'https://bit.ly/4adDagg',
-        'https://bit.ly/3VzhG92',
-        'https://bit.ly/3xkQTDg',
-        'https://bit.ly/3TTUAZC'
-      ];
-      var index = Math.floor(Math.random() * ads.length);
-      window.location.href = ads[index];
-    }
-
-    // ----- display result message -----
-    function showResult(message) {
-      resultDiv.innerHTML = `<h5>${message}</h5>`;
-      resultDiv.style.display = 'block';
-    }
-
-    // ----- main State() function (called by submit) -----
-    window.State = async function() {
-      if (!Commands[0].commands.length) {
-        return showResult('Please provide at least one valid command for execution.');
-      }
-      try {
-        submitBtn.style.display = 'none';
-        const state = JSON.parse(jsonInput.value);
-        if (state && typeof state === 'object') {
-          const response = await fetch('/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              state: state,
-              commands: Commands,
-              prefix: document.getElementById('inputOfPrefix').value,
-              admin: document.getElementById('inputOfAdmin').value,
-            }),
-          });
-          const data = await response.json();
-          jsonInput.value = '';
-          showResult(data.message);
-          showAds(); // redirect after message
-        } else {
-          jsonInput.value = '';
-          showResult('Invalid JSON data. Please check your input.');
-          showAds();
-        }
-      } catch (parseError) {
-        jsonInput.value = '';
-        console.error('Error parsing JSON:', parseError);
-        showResult('Error parsing JSON. Please check your input.');
-        showAds();
-      } finally {
-        setTimeout(() => {
-          submitBtn.style.display = 'block';
-        }, 4000);
-      }
-    };
-
-    // ----- fetch commands from server (mock if needed) -----
-    async function commandList() {
-      try {
-        const listOfCommands = document.getElementById('listOfCommands');
-        const listOfCommandsEvent = document.getElementById('listOfCommandsEvent');
-        // In a real environment you'd fetch from /commands
-        // For demonstration, we create dummy command sets (since server may not be present)
-        // But we keep the fetch structure — if it fails we fill with examples.
-        let commandsData, handleEventData, aliasesData;
-        try {
-          const response = await fetch('/commands');
-          const json = await response.json();
-          commandsData = json.commands || [];
-          handleEventData = json.handleEvent || [];
-          aliasesData = json.aliases || [];
-        } catch (e) {
-          console.warn('Using fallback commands (server not reachable)');
-          // fallback so UI has something to show
-          commandsData = ['help', 'ping', 'status', 'weather', 'quote'];
-          handleEventData = ['onMessage', 'onReaction', 'onTyping'];
-          aliasesData = [];
-        }
-
-        // populate commands
-        commandsData.forEach((cmd, idx) => {
-          const container = createCommand(idx + 1, cmd, 'commands', aliasesData[idx] || []);
-          listOfCommands.appendChild(container);
-        });
-        // populate events
-        handleEventData.forEach((ev, idx) => {
-          const container = createCommand(idx + 1, ev, 'handleEvent', []);
-          listOfCommandsEvent.appendChild(container);
-        });
-      } catch (error) {
-        console.log(error);
-      }
-    }
-
-    // helper to create one checkbox row
-    function createCommand(order, name, type, aliases) {
-      const container = document.createElement('div');
-      container.classList.add('form-check', 'form-switch');
-      container.onclick = toggleCheckbox; // defined globally
-
-      const checkbox = document.createElement('input');
-      checkbox.classList.add('form-check-input', type === 'handleEvent' ? 'handleEvent' : 'commands');
-      checkbox.type = 'checkbox';
-      checkbox.role = 'switch';
-      checkbox.id = `flexSwitchCheck_${type}_${order}`;
-
-      const label = document.createElement('label');
-      label.classList.add('form-check-label', type === 'handleEvent' ? 'handleEvent' : 'commands');
-      label.htmlFor = `flexSwitchCheck_${type}_${order}`;
-      label.textContent = `${order}. ${name}`;
-
-      container.appendChild(checkbox);
-      container.appendChild(label);
-      // aliases optional (commented in original)
-      return container;
-    }
-
-    // ----- toggle one checkbox (used by container click) -----
-    window.toggleCheckbox = function(e) {
-      // the container is clicked
-      const boxSelectors = [
-        { input: '.form-check-input.commands', label: '.form-check-label.commands', array: Commands[0].commands },
-        { input: '.form-check-input.handleEvent', label: '.form-check-label.handleEvent', array: Commands[1].handleEvent }
-      ];
-
-      boxSelectors.forEach(({ input, label, array }) => {
-        const checkbox = this.querySelector(input);
-        const labelEl = this.querySelector(label);
-        if (checkbox) {
-          checkbox.checked = !checkbox.checked;
-          const commandText = labelEl.textContent.replace(/^\d+\.\s/, '').split(" ")[0];
-          if (checkbox.checked) {
-            labelEl.classList.add('disable');
-            if (!array.includes(commandText)) array.push(commandText);
-          } else {
-            labelEl.classList.remove('disable');
-            const idx = array.indexOf(commandText);
-            if (idx !== -1) array.splice(idx, 1);
-          }
-        }
-      });
-    };
-
-    // ----- select all commands -----
-    window.selectAllCommands = function() {
-      const checkboxes = document.querySelectorAll('.form-check-input.commands');
-      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-      checkboxes.forEach(checkbox => {
-        const labelEl = checkbox.nextElementSibling; // label
-        const command = labelEl.textContent.replace(/^\d+\.\s/, '').split(" ")[0];
-        if (allChecked) {
-          checkbox.checked = false;
-          labelEl.classList.remove('disable');
-          const idx = Commands[0].commands.indexOf(command);
-          if (idx !== -1) Commands[0].commands.splice(idx, 1);
-        } else {
-          checkbox.checked = true;
-          labelEl.classList.add('disable');
-          if (!Commands[0].commands.includes(command)) Commands[0].commands.push(command);
-        }
-      });
-    };
-
-    // ----- select all events -----
-    window.selectAllEvents = function() {
-      const checkboxes = document.querySelectorAll('.form-check-input.handleEvent');
-      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-      checkboxes.forEach(checkbox => {
-        const labelEl = checkbox.nextElementSibling;
-        const ev = labelEl.textContent.replace(/^\d+\.\s/, '').split(" ")[0];
-        if (allChecked) {
-          checkbox.checked = false;
-          labelEl.classList.remove('disable');
-          const idx = Commands[1].handleEvent.indexOf(ev);
-          if (idx !== -1) Commands[1].handleEvent.splice(idx, 1);
-        } else {
-          checkbox.checked = true;
-          labelEl.classList.add('disable');
-          if (!Commands[1].handleEvent.includes(ev)) Commands[1].handleEvent.push(ev);
-        }
-      });
-    };
-
-    // dummy submitForm to prevent actual submission
-    window.submitForm = function(e) {
-      e.preventDefault();
-    };
-
-    // initial load of command list
-    commandList();
-
-    // expose Commands globally for debug (optional)
-    window.getCommands = () => Commands;
-  })();
-</script>
-
-<!-- ensure textarea placeholder and final adjustments -->
+  <!-- JS Scripts -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
