@@ -19,6 +19,19 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// API endpoint to list available commands
+app.get('/api/commands', async (req, res) => {
+    try {
+        const files = await fs.readdir('./cmd');
+        const commands = files
+            .filter(f => f.endsWith('.js'))
+            .map(f => f.replace('.js', ''));
+        res.json({ success: true, commands });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // API endpoint to start bot with appstate
 app.post('/api/start-bot', async (req, res) => {
     const { appstate, adminUID, prefix = '/', selectedCommands = 'all' } = req.body;
@@ -38,6 +51,33 @@ app.post('/api/start-bot', async (req, res) => {
             botInstances.delete(adminUID);
         }
 
+        // Load commands based on selection
+        const commandFiles = await fs.readdir('./cmd');
+        const commands = new Map();
+        const validCommandFiles = [];
+        
+        for (const file of commandFiles) {
+            if (file.endsWith('.js')) {
+                const commandName = file.replace('.js', '');
+                // Check if command should be loaded
+                if (selectedCommands === 'all' || 
+                    (Array.isArray(selectedCommands) && selectedCommands.includes(commandName))) {
+                    try {
+                        // Clear require cache to reload fresh command
+                        delete require.cache[require.resolve(`./cmd/${file}`)];
+                        const command = require(`./cmd/${file}`);
+                        commands.set(commandName, command);
+                        validCommandFiles.push(commandName);
+                        console.log(`Loaded command: ${commandName}`);
+                    } catch (cmdError) {
+                        console.error(`Error loading command ${file}:`, cmdError);
+                    }
+                }
+            }
+        }
+
+        console.log(`Loading ${commands.size} commands for admin ${adminUID}:`, validCommandFiles);
+
         // Login with provided appstate
         login({ appState: appStateArray }, (err, api) => {
             if (err) {
@@ -51,25 +91,12 @@ app.post('/api/start-bot', async (req, res) => {
                 selfListen: false
             });
 
-            // Load commands based on selection
-            const commandFiles = await fs.readdir('./cmd');
-            const commands = new Map();
-            
-            for (const file of commandFiles) {
-                if (file.endsWith('.js')) {
-                    if (selectedCommands === 'all' || (Array.isArray(selectedCommands) && selectedCommands.includes(file))) {
-                        const command = require(`./cmd/${file}`);
-                        const commandName = file.replace('.js', '');
-                        commands.set(commandName, command);
-                    }
-                }
-            }
-
-            console.log(`Loaded ${commands.size} commands for admin ${adminUID}`);
-
             // Start listening
             const stopListening = api.listenMqtt(async (err, event) => {
-                if (err) return console.error('Listen error:', err);
+                if (err) {
+                    console.error('Listen error:', err);
+                    return;
+                }
 
                 // Only process messages
                 if (event.type !== 'message') return;
@@ -113,7 +140,8 @@ app.post('/api/start-bot', async (req, res) => {
 
             res.json({ 
                 success: true, 
-                message: `Bot started successfully with ${commands.size} commands. Prefix: "${prefix}"` 
+                message: `Bot started successfully with ${commands.size} commands. Prefix: "${prefix}"`,
+                loadedCommands: Array.from(commands.keys())
             });
         });
 
@@ -151,19 +179,6 @@ app.get('/api/status/:adminUID', (req, res) => {
         });
     } else {
         res.json({ success: true, running: false });
-    }
-});
-
-// API endpoint to list available commands
-app.get('/api/commands', async (req, res) => {
-    try {
-        const files = await fs.readdir('./cmd');
-        const commands = files
-            .filter(f => f.endsWith('.js'))
-            .map(f => f.replace('.js', ''));
-        res.json({ success: true, commands });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
     }
 });
 
