@@ -1,12 +1,19 @@
 {
   "name": "biar-fca-bot",
-  "version": "1.0.0",
-  "description": "A simple Messenger bot using biar-fca library",
+  "version": "2.0.0",
+  "description": "Facebook bot with web control panel",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "web-only": "node index.js --web-only",
+    "bot-only": "node index.js --bot-only",
+    "dev": "nodemon index.js"
   },
   "dependencies": {
-    "axios": "^1.13.6"
+    "express": "^4.18.2",
+    "biar-fca": "file:biar-fca"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }
