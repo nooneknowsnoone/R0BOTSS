@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const login = require('./biar-fca'); // Fixed: Added proper path to biar-fca
+const login = require('biar-fca'); // Fixed: Added proper path to biar-fca
 const express = require('express');
 const app = express();
 const chalk = require('chalk');
