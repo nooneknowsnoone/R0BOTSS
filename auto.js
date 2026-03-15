@@ -1,649 +1,35 @@
 const fs = require('fs');
 const path = require('path');
-const login = require('./biar-fca'); // ✅ Fixed: Properly pointing to local biar-fca
+const login = require('./biar-fca'); // Connected to biar-fca
 const express = require('express');
 const app = express();
 const chalk = require('chalk');
 const bodyParser = require('body-parser');
+
+// ============= AUTO-CREATE ALL REQUIRED FOLDERS =============
+const folders = [
+  './data',
+  './data/session',
+  './script',
+  './script/cache',
+  './public',
+  './cmd'
+];
+
+folders.forEach(folder => {
+  if (!fs.existsSync(folder)) {
+    fs.mkdirSync(folder, { recursive: true });
+    console.log(chalk.green(`✅ Created folder: ${folder}`));
+  }
+});
+
 const script = path.join(__dirname, 'script');
 const cron = require('node-cron');
-const config = fs.existsSync('./data') && fs.existsSync('./data/config.json') ? JSON.parse(fs.readFileSync('./data/config.json', 'utf8')) : createConfig();
-const Utils = new Object({
-  commands: new Map(),
-  handleEvent: new Map(),
-  account: new Map(),
-  cooldowns: new Map(),
-});
 
-// Load all commands from script folder
-fs.readdirSync(script).forEach((file) => {
-  const scripts = path.join(script, file);
-  const stats = fs.statSync(scripts);
-  if (stats.isDirectory()) {
-    fs.readdirSync(scripts).forEach((file) => {
-      try {
-        const {
-          config,
-          run,
-          handleEvent
-        } = require(path.join(scripts, file));
-        if (config) {
-          const {
-            name = [], role = '0', version = '1.0.0', hasPrefix = true, aliases = [], description = '', usage = '', credits = '', cooldown = '5'
-          } = Object.fromEntries(Object.entries(config).map(([key, value]) => [key.toLowerCase(), value]));
-          aliases.push(name);
-          if (run) {
-            Utils.commands.set(aliases, {
-              name,
-              role,
-              run,
-              aliases,
-              description,
-              usage,
-              version,
-              hasPrefix: config.hasPrefix,
-              credits,
-              cooldown
-            });
-          }
-          if (handleEvent) {
-            Utils.handleEvent.set(aliases, {
-              name,
-              handleEvent,
-              role,
-              description,
-              usage,
-              version,
-              hasPrefix: config.hasPrefix,
-              credits,
-              cooldown
-            });
-          }
-        }
-      } catch (error) {
-        console.error(chalk.red(`Error installing command from file ${file}: ${error.message}`));
-      }
-    });
-  } else {
-    try {
-      const {
-        config,
-        run,
-        handleEvent
-      } = require(scripts);
-      if (config) {
-        const {
-          name = [], role = '0', version = '1.0.0', hasPrefix = true, aliases = [], description = '', usage = '', credits = '', cooldown = '5'
-        } = Object.fromEntries(Object.entries(config).map(([key, value]) => [key.toLowerCase(), value]));
-        aliases.push(name);
-        if (run) {
-          Utils.commands.set(aliases, {
-            name,
-            role,
-            run,
-            aliases,
-            description,
-            usage,
-            version,
-            hasPrefix: config.hasPrefix,
-            credits,
-            cooldown
-          });
-        }
-        if (handleEvent) {
-          Utils.handleEvent.set(aliases, {
-            name,
-            handleEvent,
-            role,
-            description,
-            usage,
-            version,
-            hasPrefix: config.hasPrefix,
-            credits,
-            cooldown
-          });
-        }
-      }
-    } catch (error) {
-      console.error(chalk.red(`Error installing command from file ${file}: ${error.message}`));
-    }
-  }
-});
-
-// Express server setup
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(bodyParser.json());
-app.use(express.json());
-
-const routes = [{
-  path: '/',
-  file: 'index.html'
-}, {
-  path: '/step_by_step_guide',
-  file: 'guide.html'
-}, {
-  path: '/online_user',
-  file: 'online.html'
-}, {
-  path: '/site',
-  file: 'autobot.html'
-}, {
-  path: '/autoshare',
-  file: 'autoshare.html'
-}, ];
-
-routes.forEach(route => {
-  app.get(route.path, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', route.file));
-  });
-});
-
-// API endpoints
-app.get('/info', (req, res) => {
-  const data = Array.from(Utils.account.values()).map(account => ({
-    name: account.name,
-    profileUrl: account.profileUrl,
-    thumbSrc: account.thumbSrc,
-    time: account.time
-  }));
-  res.json(JSON.parse(JSON.stringify(data, null, 2)));
-});
-
-app.get('/commands', (req, res) => {
-  const command = new Set();
-  const commands = [...Utils.commands.values()].map(({
-    name
-  }) => (command.add(name), name));
-  const handleEvent = [...Utils.handleEvent.values()].map(({
-    name
-  }) => command.has(name) ? null : (command.add(name), name)).filter(Boolean);
-  const role = [...Utils.commands.values()].map(({
-    role
-  }) => (command.add(role), role));
-  const aliases = [...Utils.commands.values()].map(({
-    aliases
-  }) => (command.add(aliases), aliases));
-  res.json(JSON.parse(JSON.stringify({
-    commands,
-    handleEvent,
-    role,
-    aliases
-  }, null, 2)));
-});
-
-// Login endpoint
-app.post('/login', async (req, res) => {
-  const {
-    state,
-    commands,
-    prefix,
-    admin
-  } = req.body;
-  try {
-    if (!state) {
-      throw new Error('Missing app state data');
-    }
-    const cUser = state.find(item => item.key === 'c_user');
-    if (cUser) {
-      const existingUser = Utils.account.get(cUser.value);
-      if (existingUser) {
-        console.log(`User ${cUser.value} is already logged in`);
-        return res.status(400).json({
-          error: false,
-          message: "Active user session detected; already logged in",
-          user: existingUser
-        });
-      } else {
-        try {
-          await accountLogin(state, commands, prefix, [admin]);
-          res.status(200).json({
-            success: true,
-            message: 'Authentication process completed successfully; login achieved.'
-          });
-        } catch (error) {
-          console.error(error);
-          res.status(400).json({
-            error: true,
-            message: error.message
-          });
-        }
-      }
-    } else {
-      return res.status(400).json({
-        error: true,
-        message: "There's an issue with the appstate data; it's invalid."
-      });
-    }
-  } catch (error) {
-    return res.status(400).json({
-      error: true,
-      message: "There's an issue with the appstate data; it's invalid."
-    });
-  }
-});
-
-// Start server
-app.listen(3000, () => {
-  console.log(chalk.green(`✅ Server is running at http://localhost:3000`));
-});
-
-process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled Promise Rejection:', reason);
-});
-
-// Main account login function
-async function accountLogin(state, enableCommands = [], prefix, admin = []) {
-  return new Promise((resolve, reject) => {
-    login({
-      appState: state
-    }, async (error, api) => {
-      if (error) {
-        console.error(chalk.red('❌ Login failed:'), error);
-        reject(error);
-        return;
-      }
-
-      console.log(chalk.green('✅ Facebook login successful!'));
-
-      const userid = await api.getCurrentUserID();
-      addThisUser(userid, enableCommands, state, prefix, admin);
-      
-      try {
-        const userInfo = await api.getUserInfo(userid);
-        if (!userInfo || !userInfo[userid]?.name || !userInfo[userid]?.profileUrl || !userInfo[userid]?.thumbSrc) {
-          throw new Error('Unable to locate the account; it appears to be in a suspended or locked state.');
-        }
-        
-        const {
-          name,
-          profileUrl,
-          thumbSrc
-        } = userInfo[userid];
-        
-        let time = 0;
-        try {
-          const historyData = JSON.parse(fs.readFileSync('./data/history.json', 'utf-8'));
-          const foundUser = historyData.find(user => user.userid === userid);
-          time = foundUser?.time || 0;
-        } catch (e) {
-          // History file might not exist yet
-        }
-        
-        Utils.account.set(userid, {
-          name,
-          profileUrl,
-          thumbSrc,
-          time: time
-        });
-
-        // Update online time every second
-        const intervalId = setInterval(() => {
-          try {
-            const account = Utils.account.get(userid);
-            if (!account) {
-              clearInterval(intervalId);
-              return;
-            }
-            Utils.account.set(userid, {
-              ...account,
-              time: account.time + 1
-            });
-          } catch (error) {
-            clearInterval(intervalId);
-            return;
-          }
-        }, 1000);
-        
-      } catch (error) {
-        console.error(chalk.red('❌ Error getting user info:'), error);
-        reject(error);
-        return;
-      }
-
-      // Set API options with safe defaults
-      api.setOptions({
-        listenEvents: config?.[0]?.fcaOption?.listenEvents ?? true,
-        logLevel: config?.[0]?.fcaOption?.logLevel ?? "silent",
-        updatePresence: config?.[0]?.fcaOption?.updatePresence ?? true,
-        selfListen: config?.[0]?.fcaOption?.selfListen ?? false,
-        forceLogin: config?.[0]?.fcaOption?.forceLogin ?? true,
-        online: config?.[0]?.fcaOption?.online ?? true,
-        autoMarkDelivery: config?.[0]?.fcaOption?.autoMarkDelivery ?? false,
-        autoMarkRead: config?.[0]?.fcaOption?.autoMarkRead ?? false,
-      });
-
-      try {
-        var listenEmitter = api.listenMqtt(async (error, event) => {
-          if (error) {
-            console.error(chalk.red(`❌ MQTT Listen error for ${userid}:`), error);
-            if (error === 'Connection closed.') {
-              console.error(`Connection closed for user ${userid}`);
-            }
-            return;
-          }
-
-          // Skip if no event
-          if (!event) return;
-
-          // Load database
-          let database = [];
-          try {
-            database = fs.existsSync('./data/database.json') ? 
-              JSON.parse(fs.readFileSync('./data/database.json', 'utf8')) : 
-              await createDatabase();
-          } catch (e) {
-            // Database might not exist yet
-          }
-
-          let data = Array.isArray(database) ? database.find(item => Object.keys(item)[0] === event?.threadID) : {};
-          
-          // Create thread if not exists
-          if (event?.threadID && !data) {
-            data = await createThread(event.threadID, api);
-          }
-
-          // Check blacklist
-          let blacklist = [];
-          try {
-            blacklist = (JSON.parse(fs.readFileSync('./data/history.json', 'utf-8'))
-              .find(blacklist => blacklist.userid === userid) || {}).blacklist || [];
-          } catch (e) {
-            // History might not exist
-          }
-
-          // Check if command has prefix
-          let hasPrefix = prefix || '';
-          if (event.body) {
-            const firstWord = event.body.trim().toLowerCase().split(/ +/).shift();
-            const cmdInfo = aliases(firstWord);
-            if (cmdInfo && cmdInfo.hasPrefix === false) {
-              hasPrefix = '';
-            }
-          }
-
-          // Parse command
-          let [command, ...args] = [];
-          if (event.body && hasPrefix) {
-            const bodyLower = event.body.trim().toLowerCase();
-            if (bodyLower.startsWith(hasPrefix.toLowerCase())) {
-              const parts = bodyLower.substring(hasPrefix.length).trim().split(/\s+/);
-              command = parts[0];
-              args = parts.slice(1);
-            }
-          }
-
-          const matchedCommand = aliases(command);
-
-          // Check if command needs prefix but was used without it
-          if (event.body && matchedCommand && matchedCommand.hasPrefix === false && hasPrefix) {
-            api.sendMessage(`⚠️ The "${matchedCommand.name}" command doesn't need a prefix. Just type "${command}" directly.`, event.threadID, event.messageID);
-            return;
-          }
-
-          // Check permissions
-          if (event.body && matchedCommand?.name) {
-            const role = matchedCommand?.role ?? 0;
-            const isAdmin = config?.[0]?.masterKey?.admin?.includes(event.senderID) || admin.includes(event.senderID);
-            
-            let isThreadAdmin = isAdmin;
-            if (event.threadID && data && data[event.threadID]) {
-              isThreadAdmin = isThreadAdmin || data[event.threadID].some(admin => admin.id === event.senderID);
-            }
-
-            if ((role == 1 && !isAdmin) || 
-                (role == 2 && !isThreadAdmin) || 
-                (role == 3 && !config?.[0]?.masterKey?.admin?.includes(event.senderID))) {
-              api.sendMessage(`⛔ You don't have permission to use this command.`, event.threadID, event.messageID);
-              return;
-            }
-          }
-
-          // Check blacklist
-          if (event.body && blacklist.includes(event.senderID)) {
-            api.sendMessage("⛔ You've been banned from using this bot.", event.threadID, event.messageID);
-            return;
-          }
-
-          // Check cooldown
-          if (event.body && matchedCommand?.name) {
-            const now = Date.now();
-            const name = matchedCommand.name;
-            const cooldownKey = `${event.senderID}_${name}_${userid}`;
-            const lastUsed = Utils.cooldowns.get(cooldownKey);
-            const delay = matchedCommand.cooldown ?? 5;
-
-            if (!lastUsed || (now - lastUsed.timestamp) >= delay * 1000) {
-              Utils.cooldowns.set(cooldownKey, {
-                timestamp: now,
-                command: name
-              });
-            } else {
-              const waitTime = Math.ceil((lastUsed.timestamp + delay * 1000 - now) / 1000);
-              api.sendMessage(`⏱️ Please wait ${waitTime} second(s) before using "${name}" again.`, event.threadID, event.messageID);
-              return;
-            }
-          }
-
-          // Handle invalid prefix usage
-          if (event.body && !command && event.body?.toLowerCase().startsWith(prefix?.toLowerCase() || '')) {
-            api.sendMessage(`❌ Invalid command. Use ${prefix}help to see available commands.`, event.threadID, event.messageID);
-            return;
-          }
-
-          // Handle unknown command
-          if (event.body && command && prefix && event.body?.toLowerCase().startsWith(prefix?.toLowerCase() || '') && !matchedCommand?.name) {
-            api.sendMessage(`❌ Unknown command '${command}'. Use ${prefix}help to see available commands.`, event.threadID, event.messageID);
-            return;
-          }
-
-          // Handle events (for handleEvent commands)
-          for (const {
-              handleEvent,
-              name
-            } of Utils.handleEvent.values()) {
-            if (handleEvent && name) {
-              const shouldRun = (enableCommands[1]?.handleEvent || []).includes(name) || 
-                               (enableCommands[0]?.commands || []).includes(name);
-              if (shouldRun) {
-                try {
-                  handleEvent({
-                    api,
-                    event,
-                    enableCommands,
-                    admin,
-                    prefix,
-                    blacklist,
-                    Utils
-                  });
-                } catch (err) {
-                  console.error(chalk.red(`Error in handleEvent ${name}:`), err);
-                }
-              }
-            }
-          }
-
-          // Handle commands
-          switch (event.type) {
-            case 'message':
-            case 'message_reply':
-            case 'message_unsend':
-            case 'message_reaction':
-              if (matchedCommand?.name && enableCommands[0]?.commands.includes(matchedCommand.name)) {
-                try {
-                  await matchedCommand.run({
-                    api,
-                    event,
-                    args,
-                    enableCommands,
-                    admin,
-                    prefix,
-                    blacklist,
-                    Utils,
-                  });
-                } catch (err) {
-                  console.error(chalk.red(`Error running command ${matchedCommand.name}:`), err);
-                  api.sendMessage(`❌ Error executing command: ${err.message}`, event.threadID);
-                }
-              }
-              break;
-          }
-        });
-      } catch (error) {
-        console.error(chalk.red(`❌ Error setting up MQTT listener for ${userid}:`), error);
-        Utils.account.delete(userid);
-        await deleteThisUser(userid);
-        return;
-      }
-      
-      resolve();
-    });
-  });
-}
-
-// Helper functions
-async function deleteThisUser(userid) {
-  const configFile = './data/history.json';
-  let config = [];
-  try {
-    config = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
-  } catch (e) {
-    // File might not exist
-  }
-  
-  const sessionFile = path.join('./data/session', `${userid}.json`);
-  const index = config.findIndex(item => item.userid === userid);
-  if (index !== -1) config.splice(index, 1);
-  
-  try {
-    fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
-  } catch (e) {
-    console.log(e);
-  }
-  
-  try {
-    if (fs.existsSync(sessionFile)) fs.unlinkSync(sessionFile);
-  } catch (error) {
-    console.log(error);
-  }
-}
-
-async function addThisUser(userid, enableCommands, state, prefix, admin, blacklist = []) {
-  const configFile = './data/history.json';
-  const sessionFolder = './data/session';
-  const sessionFile = path.join(sessionFolder, `${userid}.json`);
-  
-  // Create folders if they don't exist
-  if (!fs.existsSync('./data')) fs.mkdirSync('./data');
-  if (!fs.existsSync(sessionFolder)) fs.mkdirSync(sessionFolder);
-  
-  // Don't add if session already exists
-  if (fs.existsSync(sessionFile)) return;
-  
-  // Read or create config
-  let config = [];
-  try {
-    config = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
-  } catch (e) {
-    // File doesn't exist, will create new array
-  }
-  
-  config.push({
-    userid,
-    prefix: prefix || "",
-    admin: admin || [],
-    blacklist: blacklist || [],
-    enableCommands,
-    time: 0,
-  });
-  
-  fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
-  fs.writeFileSync(sessionFile, JSON.stringify(state));
-}
-
-function aliases(command) {
-  if (!command) return null;
-  
-  const aliases = Array.from(Utils.commands.entries()).find(([commands]) => 
-    commands.some(cmd => cmd?.toLowerCase() === command?.toLowerCase())
-  );
-  
-  if (aliases) {
-    return aliases[1];
-  }
-  return null;
-}
-
-async function main() {
-  console.log(chalk.cyan('🚀 Starting bot system...'));
-  
-  const empty = require('fs-extra');
-  const cacheFile = './script/cache';
-  
-  // Create necessary folders
-  if (!fs.existsSync('./data')) fs.mkdirSync('./data');
-  if (!fs.existsSync('./script')) fs.mkdirSync('./script');
-  if (!fs.existsSync(cacheFile)) fs.mkdirSync(cacheFile, { recursive: true });
-  
-  const configFile = './data/history.json';
-  if (!fs.existsSync(configFile)) fs.writeFileSync(configFile, '[]', 'utf-8');
-  
-  const sessionFolder = path.join('./data/session');
-  if (!fs.existsSync(sessionFolder)) fs.mkdirSync(sessionFolder);
-  
-  const adminOfConfig = fs.existsSync('./data') && fs.existsSync('./data/config.json') ? 
-    JSON.parse(fs.readFileSync('./data/config.json', 'utf8')) : 
-    createConfig();
-
-  // Schedule restart
-  cron.schedule(`*/${adminOfConfig[0].masterKey.restartTime} * * * *`, async () => {
-    console.log(chalk.yellow('🔄 Scheduled restart triggered...'));
-    try {
-      const history = JSON.parse(fs.readFileSync('./data/history.json', 'utf-8'));
-      history.forEach(user => {
-        if (!user || typeof user !== 'object') return;
-        const update = Utils.account.get(user.userid);
-        if (update) user.time = update.time;
-      });
-      await empty.emptyDir(cacheFile);
-      await fs.writeFileSync('./data/history.json', JSON.stringify(history, null, 2));
-    } catch (e) {
-      console.error(chalk.red('Error during restart prep:'), e);
-    }
-    console.log(chalk.yellow('🔄 Restarting...'));
-    process.exit(1);
-  });
-
-  // Load all saved sessions
-  try {
-    const sessionFiles = fs.readdirSync(sessionFolder);
-    console.log(chalk.cyan(`📁 Found ${sessionFiles.length} saved session(s)`));
-    
-    for (const file of sessionFiles) {
-      const filePath = path.join(sessionFolder, file);
-      try {
-        const config = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
-        const userConfig = config.find(item => item.userid === path.parse(file).name) || {};
-        const { enableCommands, prefix, admin, blacklist } = userConfig;
-        const state = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-        
-        if (enableCommands) {
-          console.log(chalk.cyan(`📱 Logging in user: ${path.parse(file).name}`));
-          await accountLogin(state, enableCommands, prefix, admin, blacklist);
-        }
-      } catch (error) {
-        console.error(chalk.red(`❌ Failed to load session ${file}:`), error.message);
-        await deleteThisUser(path.parse(file).name);
-      }
-    }
-  } catch (error) {
-    console.error(chalk.red('Error loading sessions:'), error);
-  }
-  
-  console.log(chalk.green('✅ Bot system ready!'));
-}
-
-function createConfig() {
-  const config = [{
+// ============= CONFIGURATION =============
+// Create default config if not exists
+function createDefaultConfig() {
+  const defaultConfig = [{
     masterKey: {
       admin: [],
       devMode: false,
@@ -663,54 +49,521 @@ function createConfig() {
     }
   }];
   
-  const dataFolder = './data';
-  if (!fs.existsSync(dataFolder)) fs.mkdirSync(dataFolder);
-  fs.writeFileSync('./data/config.json', JSON.stringify(config, null, 2));
-  console.log(chalk.green('✅ Created default config.json'));
-  return config;
+  fs.writeFileSync('./data/config.json', JSON.stringify(defaultConfig, null, 2));
+  return defaultConfig;
 }
 
-async function createThread(threadID, api) {
-  try {
-    let database = [];
+// Load or create config
+const config = fs.existsSync('./data/config.json') 
+  ? JSON.parse(fs.readFileSync('./data/config.json', 'utf8')) 
+  : createDefaultConfig();
+
+// ============= UTILS OBJECT =============
+const Utils = {
+  commands: new Map(),
+  handleEvent: new Map(),
+  account: new Map(),
+  cooldowns: new Map(),
+};
+
+// ============= LOAD COMMANDS FROM SCRIPT FOLDER =============
+console.log(chalk.cyan('📂 Loading commands...'));
+
+// Check if script folder exists and has files
+if (fs.existsSync(script)) {
+  const files = fs.readdirSync(script);
+  
+  if (files.length === 0) {
+    // Create a sample command if no commands exist
+    const sampleCommand = `module.exports = {
+  config: {
+    name: "help",
+    description: "Show available commands",
+    usage: "",
+    cooldown: 5
+  },
+  run: async ({ api, event, Utils }) => {
+    const commands = Array.from(Utils.commands.keys()).map(cmd => cmd[0]).filter(Boolean);
+    const msg = "📋 Available commands:\\n" + commands.map(cmd => "• " + cmd).join("\\n");
+    await api.sendMessage(msg, event.threadID);
+  }
+};`;
+    fs.writeFileSync('./script/help.js', sampleCommand);
+    console.log(chalk.yellow('📝 Created sample help command'));
+  }
+
+  // Load commands
+  fs.readdirSync(script).forEach((file) => {
+    if (!file.endsWith('.js')) return;
+    
     try {
-      database = JSON.parse(fs.readFileSync('./data/database.json', 'utf8'));
-    } catch (e) {
-      database = [];
+      const commandPath = path.join(script, file);
+      const command = require(commandPath);
+      
+      if (command.config && command.run) {
+        const config = command.config;
+        const name = config.name || path.parse(file).name;
+        const aliases = config.aliases ? [name, ...config.aliases] : [name];
+        
+        Utils.commands.set(aliases, {
+          name: name,
+          role: config.role || 0,
+          run: command.run,
+          aliases: aliases,
+          description: config.description || '',
+          usage: config.usage || '',
+          version: config.version || '1.0.0',
+          hasPrefix: config.hasPrefix !== false,
+          credits: config.credits || 'Unknown',
+          cooldown: config.cooldown || 5
+        });
+        
+        if (command.handleEvent) {
+          Utils.handleEvent.set(aliases, {
+            name: name,
+            handleEvent: command.handleEvent,
+            role: config.role || 0,
+            description: config.description || '',
+            usage: config.usage || '',
+            version: config.version || '1.0.0',
+            hasPrefix: config.hasPrefix !== false,
+            credits: config.credits || 'Unknown',
+            cooldown: config.cooldown || 5
+          });
+        }
+        
+        console.log(chalk.green(`✅ Loaded command: ${name}`));
+      }
+    } catch (error) {
+      console.error(chalk.red(`❌ Error loading command ${file}:`), error.message);
+    }
+  });
+} else {
+  console.log(chalk.yellow('⚠️ Script folder not found, creating it...'));
+  fs.mkdirSync(script, { recursive: true });
+}
+
+console.log(chalk.green(`✅ Loaded ${Utils.commands.size} commands`));
+
+// ============= EXPRESS SERVER SETUP =============
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(bodyParser.json());
+app.use(express.json());
+
+// Create basic HTML files if not exists
+const htmlFiles = {
+  'index.html': '<!DOCTYPE html><html><head><title>Bot Dashboard</title></head><body><h1>Bot is Running!</h1></body></html>',
+  'guide.html': '<h1>Guide</h1>',
+  'online.html': '<h1>Online Users</h1>',
+  'autobot.html': '<h1>Auto Bot</h1>',
+  'autoshare.html': '<h1>Auto Share</h1>'
+};
+
+Object.entries(htmlFiles).forEach(([file, content]) => {
+  const filePath = path.join(__dirname, 'public', file);
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, content);
+  }
+});
+
+const routes = [
+  { path: '/', file: 'index.html' },
+  { path: '/step_by_step_guide', file: 'guide.html' },
+  { path: '/online_user', file: 'online.html' },
+  { path: '/site', file: 'autobot.html' },
+  { path: '/autoshare', file: 'autoshare.html' },
+];
+
+routes.forEach(route => {
+  app.get(route.path, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', route.file));
+  });
+});
+
+// API Endpoints
+app.get('/info', (req, res) => {
+  const data = Array.from(Utils.account.values()).map(account => ({
+    name: account.name,
+    profileUrl: account.profileUrl,
+    thumbSrc: account.thumbSrc,
+    time: account.time
+  }));
+  res.json(data);
+});
+
+app.get('/commands', (req, res) => {
+  const commandList = [];
+  Utils.commands.forEach(cmd => {
+    commandList.push({
+      name: cmd.name,
+      description: cmd.description,
+      usage: cmd.usage,
+      role: cmd.role,
+      hasPrefix: cmd.hasPrefix
+    });
+  });
+  res.json(commandList);
+});
+
+// Login endpoint
+app.post('/login', async (req, res) => {
+  const { state, commands, prefix, admin } = req.body;
+  
+  try {
+    if (!state) {
+      return res.status(400).json({ error: true, message: 'Missing app state data' });
     }
     
-    let threadInfo = await api.getThreadInfo(threadID);
-    let adminIDs = threadInfo ? threadInfo.adminIDs : [];
+    const cUser = state.find(item => item.key === 'c_user');
+    if (!cUser) {
+      return res.status(400).json({ error: true, message: 'Invalid appstate data' });
+    }
     
-    const data = {};
-    data[threadID] = adminIDs;
-    database.push(data);
+    const existingUser = Utils.account.get(cUser.value);
+    if (existingUser) {
+      return res.status(400).json({ 
+        error: false, 
+        message: "Already logged in", 
+        user: existingUser 
+      });
+    }
     
-    await fs.writeFileSync('./data/database.json', JSON.stringify(database, null, 2), 'utf-8');
-    return database;
+    try {
+      await accountLogin(state, commands || [[], []], prefix || '!', [admin]);
+      res.status(200).json({ 
+        success: true, 
+        message: 'Login successful' 
+      });
+    } catch (error) {
+      res.status(400).json({ error: true, message: error.message });
+    }
   } catch (error) {
-    console.log(error);
-    return [];
+    res.status(400).json({ error: true, message: "Invalid appstate data" });
   }
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(chalk.green(`✅ Server running at http://localhost:${PORT}`));
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});
+
+// ============= MAIN ACCOUNT LOGIN FUNCTION (biar-fca connection) =============
+async function accountLogin(state, enableCommands = [[], []], prefix = '!', admin = []) {
+  return new Promise((resolve, reject) => {
+    console.log(chalk.cyan('📱 Attempting Facebook login...'));
+    
+    login({ appState: state }, async (error, api) => {
+      if (error) {
+        console.error(chalk.red('❌ Login failed:'), error);
+        reject(error);
+        return;
+      }
+
+      console.log(chalk.green('✅ Facebook login successful! Connected via biar-fca'));
+
+      try {
+        const userid = await api.getCurrentUserID();
+        console.log(chalk.cyan(`👤 Logged in as user ID: ${userid}`));
+        
+        await addThisUser(userid, enableCommands, state, prefix, admin);
+        
+        const userInfo = await api.getUserInfo(userid);
+        if (!userInfo || !userInfo[userid]) {
+          throw new Error('Cannot get user info');
+        }
+
+        const { name, profileUrl, thumbSrc } = userInfo[userid];
+        
+        // Get or initialize time
+        let time = 0;
+        try {
+          if (fs.existsSync('./data/history.json')) {
+            const history = JSON.parse(fs.readFileSync('./data/history.json', 'utf8'));
+            const userHistory = history.find(u => u.userid === userid);
+            time = userHistory?.time || 0;
+          }
+        } catch (e) {
+          // Ignore history errors
+        }
+
+        Utils.account.set(userid, { name, profileUrl, thumbSrc, time });
+
+        // Update online time
+        const intervalId = setInterval(() => {
+          const account = Utils.account.get(userid);
+          if (account) {
+            account.time += 1;
+            Utils.account.set(userid, account);
+          } else {
+            clearInterval(intervalId);
+          }
+        }, 1000);
+
+        // Configure biar-fca options
+        api.setOptions({
+          listenEvents: config[0]?.fcaOption?.listenEvents ?? true,
+          logLevel: config[0]?.fcaOption?.logLevel ?? "silent",
+          updatePresence: config[0]?.fcaOption?.updatePresence ?? true,
+          selfListen: config[0]?.fcaOption?.selfListen ?? false,
+          forceLogin: config[0]?.fcaOption?.forceLogin ?? true,
+          online: config[0]?.fcaOption?.online ?? true,
+          autoMarkDelivery: config[0]?.fcaOption?.autoMarkDelivery ?? false,
+          autoMarkRead: config[0]?.fcaOption?.autoMarkRead ?? false,
+        });
+
+        // Start listening for events (biar-fca MQTT connection)
+        api.listenMqtt(async (err, event) => {
+          if (err) {
+            console.error(chalk.red(`❌ MQTT Error for ${userid}:`), err);
+            return;
+          }
+
+          if (!event) return;
+
+          // Handle events with your auto.js logic
+          try {
+            await handleEvent(api, event, userid, enableCommands, prefix, admin);
+          } catch (e) {
+            console.error(chalk.red('Error handling event:'), e);
+          }
+        });
+
+        console.log(chalk.green(`✅ Listening for events via biar-fca`));
+        resolve();
+        
+      } catch (error) {
+        console.error(chalk.red('❌ Error in post-login setup:'), error);
+        reject(error);
+      }
+    });
+  });
 }
 
-async function createDatabase() {
-  const data = './data';
-  const database = './data/database.json';
-  
-  if (!fs.existsSync(data)) {
-    fs.mkdirSync(data, { recursive: true });
+// ============= EVENT HANDLER =============
+async function handleEvent(api, event, userid, enableCommands, prefix, admin) {
+  // Skip if no message body
+  if (!event.body) return;
+
+  const threadID = event.threadID;
+  const messageID = event.messageID;
+  const senderID = event.senderID;
+  const message = event.body;
+
+  // Log message for debugging
+  console.log(chalk.cyan(`💬 [${threadID}] ${senderID}: ${message}`));
+
+  // Load thread admins
+  let threadAdmins = [];
+  try {
+    if (fs.existsSync('./data/database.json')) {
+      const db = JSON.parse(fs.readFileSync('./data/database.json', 'utf8'));
+      const thread = db.find(t => t[threadID]);
+      if (thread) {
+        threadAdmins = thread[threadID] || [];
+      } else {
+        // Create thread entry
+        const threadInfo = await api.getThreadInfo(threadID);
+        const newThread = {};
+        newThread[threadID] = threadInfo.adminIDs || [];
+        db.push(newThread);
+        fs.writeFileSync('./data/database.json', JSON.stringify(db, null, 2));
+        threadAdmins = threadInfo.adminIDs || [];
+      }
+    }
+  } catch (e) {
+    // Ignore database errors
   }
-  
-  if (!fs.existsSync(database)) {
-    fs.writeFileSync(database, JSON.stringify([]));
+
+  // Check blacklist
+  let isBlacklisted = false;
+  try {
+    if (fs.existsSync('./data/history.json')) {
+      const history = JSON.parse(fs.readFileSync('./data/history.json', 'utf8'));
+      const userHistory = history.find(u => u.userid === userid);
+      isBlacklisted = userHistory?.blacklist?.includes(senderID) || false;
+    }
+  } catch (e) {
+    // Ignore blacklist errors
   }
+
+  if (isBlacklisted) {
+    api.sendMessage("⛔ You are blacklisted from using this bot.", threadID, messageID);
+    return;
+  }
+
+  // Check if message starts with prefix
+  const hasPrefix = message.toLowerCase().startsWith(prefix.toLowerCase());
   
-  return database;
+  if (hasPrefix) {
+    // Extract command and args
+    const args = message.slice(prefix.length).trim().split(/ +/);
+    const commandName = args.shift().toLowerCase();
+    
+    // Find command
+    let matchedCommand = null;
+    Utils.commands.forEach((cmd, aliases) => {
+      if (aliases.includes(commandName)) {
+        matchedCommand = cmd;
+      }
+    });
+
+    if (matchedCommand) {
+      // Check role permissions
+      const isAdmin = config[0]?.masterKey?.admin?.includes(senderID) || admin.includes(senderID);
+      const isThreadAdmin = threadAdmins.some(a => a.id === senderID);
+      
+      if (matchedCommand.role === 1 && !isAdmin) {
+        api.sendMessage("⛔ Admin only command.", threadID, messageID);
+        return;
+      }
+      
+      if (matchedCommand.role === 2 && !isThreadAdmin && !isAdmin) {
+        api.sendMessage("⛔ Group admin only command.", threadID, messageID);
+        return;
+      }
+
+      // Check cooldown
+      const cooldownKey = `${senderID}_${matchedCommand.name}`;
+      const lastUsed = Utils.cooldowns.get(cooldownKey);
+      const now = Date.now();
+      
+      if (lastUsed && (now - lastUsed) < (matchedCommand.cooldown * 1000)) {
+        const timeLeft = Math.ceil((matchedCommand.cooldown * 1000 - (now - lastUsed)) / 1000);
+        api.sendMessage(`⏱️ Please wait ${timeLeft} second(s).`, threadID, messageID);
+        return;
+      }
+
+      // Set cooldown
+      Utils.cooldowns.set(cooldownKey, now);
+
+      // Execute command
+      try {
+        await matchedCommand.run({ 
+          api, 
+          event, 
+          args, 
+          Utils,
+          prefix,
+          admin: config[0]?.masterKey?.admin || []
+        });
+      } catch (error) {
+        console.error(chalk.red(`❌ Command error (${matchedCommand.name}):`), error);
+        api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
+      }
+    } else {
+      api.sendMessage(`❌ Unknown command. Use ${prefix}help`, threadID, messageID);
+    }
+  }
+
+  // Handle events
+  Utils.handleEvent.forEach((handler) => {
+    try {
+      handler.handleEvent({ api, event, Utils });
+    } catch (e) {
+      console.error(chalk.red(`❌ HandleEvent error (${handler.name}):`), e);
+    }
+  });
 }
 
-// Start the bot
+// ============= HELPER FUNCTIONS =============
+async function addThisUser(userid, enableCommands, state, prefix, admin, blacklist = []) {
+  const historyFile = './data/history.json';
+  const sessionFile = `./data/session/${userid}.json`;
+  
+  // Create history if not exists
+  let history = [];
+  if (fs.existsSync(historyFile)) {
+    try {
+      history = JSON.parse(fs.readFileSync(historyFile, 'utf8'));
+    } catch (e) {
+      history = [];
+    }
+  }
+  
+  // Add user to history
+  const existingIndex = history.findIndex(u => u.userid === userid);
+  const userData = {
+    userid,
+    prefix: prefix || '!',
+    admin: admin || [],
+    blacklist: blacklist || [],
+    enableCommands: enableCommands || [[], []],
+    time: 0
+  };
+  
+  if (existingIndex >= 0) {
+    history[existingIndex] = userData;
+  } else {
+    history.push(userData);
+  }
+  
+  fs.writeFileSync(historyFile, JSON.stringify(history, null, 2));
+  fs.writeFileSync(sessionFile, JSON.stringify(state));
+}
+
+// ============= MAIN FUNCTION =============
+async function main() {
+  console.log(chalk.cyan('🚀 Starting biar-fca + auto.js bot...'));
+  
+  // Create all necessary files
+  if (!fs.existsSync('./data/history.json')) {
+    fs.writeFileSync('./data/history.json', '[]');
+  }
+  
+  if (!fs.existsSync('./data/database.json')) {
+    fs.writeFileSync('./data/database.json', '[]');
+  }
+
+  // Load saved sessions
+  const sessionFolder = './data/session';
+  if (fs.existsSync(sessionFolder)) {
+    const sessions = fs.readdirSync(sessionFolder);
+    console.log(chalk.cyan(`📁 Found ${sessions.length} saved session(s)`));
+    
+    for (const session of sessions) {
+      if (!session.endsWith('.json')) continue;
+      
+      try {
+        const userid = path.parse(session).name;
+        const state = JSON.parse(fs.readFileSync(path.join(sessionFolder, session), 'utf8'));
+        
+        // Get user config
+        let history = [];
+        if (fs.existsSync('./data/history.json')) {
+          history = JSON.parse(fs.readFileSync('./data/history.json', 'utf8'));
+        }
+        
+        const userConfig = history.find(u => u.userid === userid) || {};
+        const { enableCommands = [[], []], prefix = '!', admin = [] } = userConfig;
+        
+        console.log(chalk.cyan(`📱 Auto-logging: ${userid}`));
+        accountLogin(state, enableCommands, prefix, admin).catch(err => {
+          console.error(chalk.red(`❌ Failed to auto-login ${userid}:`), err.message);
+        });
+      } catch (e) {
+        console.error(chalk.red(`❌ Error loading session ${session}:`), e.message);
+      }
+    }
+  }
+
+  // Schedule restart
+  const restartTime = config[0]?.masterKey?.restartTime || 15;
+  cron.schedule(`*/${restartTime} * * * *`, () => {
+    console.log(chalk.yellow('🔄 Scheduled restart...'));
+    process.exit(0);
+  });
+
+  console.log(chalk.green('✅ Bot is ready!'));
+  console.log(chalk.green(`📝 Use prefix: "${config[0]?.masterKey?.prefix || '!'}"`));
+}
+
+// Start everything
 main().catch(err => {
-  console.error(chalk.red('Fatal error in main:'), err);
+  console.error(chalk.red('❌ Fatal error:'), err);
   process.exit(1);
 });
