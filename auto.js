@@ -5,25 +5,7 @@ const express = require('express');
 const app = express();
 const chalk = require('chalk');
 const bodyParser = require('body-parser');
-
-// ============= AUTO-CREATE ALL REQUIRED FOLDERS =============
-const folders = [
-  './data',
-  './data/session',
-  './script',
-  './script/cache',
-  './public',
-  './cmd'
-];
-
-folders.forEach(folder => {
-  if (!fs.existsSync(folder)) {
-    fs.mkdirSync(folder, { recursive: true });
-    console.log(chalk.green(`✅ Created folder: ${folder}`));
-  }
-});
-
-const script = path.join(__dirname, 'script');
+const script = path.join(__dirname, 'script'); // This points to your script folder
 const cron = require('node-cron');
 
 // ============= CONFIGURATION =============
@@ -49,6 +31,11 @@ function createDefaultConfig() {
     }
   }];
   
+  // Create data folder if not exists
+  if (!fs.existsSync('./data')) {
+    fs.mkdirSync('./data', { recursive: true });
+  }
+  
   fs.writeFileSync('./data/config.json', JSON.stringify(defaultConfig, null, 2));
   return defaultConfig;
 }
@@ -67,35 +54,18 @@ const Utils = {
 };
 
 // ============= LOAD COMMANDS FROM SCRIPT FOLDER =============
-console.log(chalk.cyan('📂 Loading commands...'));
+console.log(chalk.cyan('📂 Loading commands from script folder...'));
 
-// Check if script folder exists and has files
+// Check if script folder exists
 if (fs.existsSync(script)) {
-  const files = fs.readdirSync(script);
+  const commandFiles = fs.readdirSync(script).filter(file => file.endsWith('.js'));
   
-  if (files.length === 0) {
-    // Create a sample command if no commands exist
-    const sampleCommand = `module.exports = {
-  config: {
-    name: "help",
-    description: "Show available commands",
-    usage: "",
-    cooldown: 5
-  },
-  run: async ({ api, event, Utils }) => {
-    const commands = Array.from(Utils.commands.keys()).map(cmd => cmd[0]).filter(Boolean);
-    const msg = "📋 Available commands:\\n" + commands.map(cmd => "• " + cmd).join("\\n");
-    await api.sendMessage(msg, event.threadID);
-  }
-};`;
-    fs.writeFileSync('./script/help.js', sampleCommand);
-    console.log(chalk.yellow('📝 Created sample help command'));
+  if (commandFiles.length === 0) {
+    console.log(chalk.yellow('⚠️ No commands found in script folder'));
   }
 
   // Load commands
-  fs.readdirSync(script).forEach((file) => {
-    if (!file.endsWith('.js')) return;
-    
+  commandFiles.forEach((file) => {
     try {
       const commandPath = path.join(script, file);
       const command = require(commandPath);
@@ -132,23 +102,31 @@ if (fs.existsSync(script)) {
           });
         }
         
-        console.log(chalk.green(`✅ Loaded command: ${name}`));
+        console.log(chalk.green(`✅ Loaded command: ${name} from ${file}`));
+      } else {
+        console.log(chalk.yellow(`⚠️ Invalid command format in ${file}`));
       }
     } catch (error) {
       console.error(chalk.red(`❌ Error loading command ${file}:`), error.message);
     }
   });
 } else {
-  console.log(chalk.yellow('⚠️ Script folder not found, creating it...'));
+  console.log(chalk.red('❌ Script folder not found! Creating it...'));
   fs.mkdirSync(script, { recursive: true });
+  console.log(chalk.green('✅ Created script folder. Please add your commands.'));
 }
 
-console.log(chalk.green(`✅ Loaded ${Utils.commands.size} commands`));
+console.log(chalk.green(`✅ Loaded ${Utils.commands.size} commands total`));
 
 // ============= EXPRESS SERVER SETUP =============
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());
 app.use(express.json());
+
+// Create public folder if not exists
+if (!fs.existsSync('./public')) {
+  fs.mkdirSync('./public', { recursive: true });
+}
 
 // Create basic HTML files if not exists
 const htmlFiles = {
@@ -270,6 +248,14 @@ async function accountLogin(state, enableCommands = [[], []], prefix = '!', admi
         const userid = await api.getCurrentUserID();
         console.log(chalk.cyan(`👤 Logged in as user ID: ${userid}`));
         
+        // Create data folder if not exists
+        if (!fs.existsSync('./data')) {
+          fs.mkdirSync('./data', { recursive: true });
+        }
+        if (!fs.existsSync('./data/session')) {
+          fs.mkdirSync('./data/session', { recursive: true });
+        }
+        
         await addThisUser(userid, enableCommands, state, prefix, admin);
         
         const userInfo = await api.getUserInfo(userid);
@@ -374,6 +360,15 @@ async function handleEvent(api, event, userid, enableCommands, prefix, admin) {
         fs.writeFileSync('./data/database.json', JSON.stringify(db, null, 2));
         threadAdmins = threadInfo.adminIDs || [];
       }
+    } else {
+      // Create database file
+      fs.writeFileSync('./data/database.json', '[]');
+      
+      const threadInfo = await api.getThreadInfo(threadID);
+      const newThread = {};
+      newThread[threadID] = threadInfo.adminIDs || [];
+      fs.writeFileSync('./data/database.json', JSON.stringify([newThread], null, 2));
+      threadAdmins = threadInfo.adminIDs || [];
     }
   } catch (e) {
     // Ignore database errors
@@ -510,7 +505,15 @@ async function addThisUser(userid, enableCommands, state, prefix, admin, blackli
 async function main() {
   console.log(chalk.cyan('🚀 Starting biar-fca + auto.js bot...'));
   
-  // Create all necessary files
+  // Create all necessary folders
+  if (!fs.existsSync('./data')) {
+    fs.mkdirSync('./data', { recursive: true });
+  }
+  if (!fs.existsSync('./data/session')) {
+    fs.mkdirSync('./data/session', { recursive: true });
+  }
+  
+  // Create necessary files
   if (!fs.existsSync('./data/history.json')) {
     fs.writeFileSync('./data/history.json', '[]');
   }
@@ -522,12 +525,10 @@ async function main() {
   // Load saved sessions
   const sessionFolder = './data/session';
   if (fs.existsSync(sessionFolder)) {
-    const sessions = fs.readdirSync(sessionFolder);
+    const sessions = fs.readdirSync(sessionFolder).filter(f => f.endsWith('.json'));
     console.log(chalk.cyan(`📁 Found ${sessions.length} saved session(s)`));
     
     for (const session of sessions) {
-      if (!session.endsWith('.json')) continue;
-      
       try {
         const userid = path.parse(session).name;
         const state = JSON.parse(fs.readFileSync(path.join(sessionFolder, session), 'utf8'));
@@ -559,7 +560,8 @@ async function main() {
   });
 
   console.log(chalk.green('✅ Bot is ready!'));
-  console.log(chalk.green(`📝 Use prefix: "${config[0]?.masterKey?.prefix || '!'}"`));
+  console.log(chalk.green(`📝 Using prefix: "${config[0]?.masterKey?.prefix || '!'}"`));
+  console.log(chalk.green(`📁 Commands loaded from: ./script/ folder`));
 }
 
 // Start everything
