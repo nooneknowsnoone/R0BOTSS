@@ -1,877 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facebook Bot Controller</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 2.5em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        h1 span {
-            background: #667eea;
-            color: white;
-            font-size: 0.4em;
-            padding: 5px 10px;
-            border-radius: 20px;
-        }
-
-        .status-card {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 25px;
-            border-left: 5px solid #ff4444;
-            transition: all 0.3s ease;
-        }
-
-        .status-card.running {
-            border-left-color: #00C851;
-        }
-
-        .status-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-
-        .status-header h3 {
-            color: #333;
-            font-size: 1.2em;
-        }
-
-        #bot-status {
-            color: #ff4444;
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-
-        #bot-status.running {
-            color: #00C851;
-        }
-
-        .status-details {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #ddd;
-        }
-
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            color: #666;
-            font-size: 0.95em;
-        }
-
-        .status-item i {
-            font-style: normal;
-            font-weight: bold;
-            color: #667eea;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #555;
-            font-weight: 600;
-            font-size: 0.95em;
-        }
-
-        label i {
-            color: #667eea;
-            margin-right: 5px;
-        }
-
-        input[type="text"],
-        textarea,
-        select {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.3s;
-            background: #fafafa;
-        }
-
-        input[type="text"]:focus,
-        textarea:focus,
-        select:focus {
-            outline: none;
-            border-color: #667eea;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        textarea {
-            resize: vertical;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 13px;
-        }
-
-        .command-select-container {
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        select[multiple] {
-            height: 200px;
-            border: none;
-            border-radius: 0;
-            padding: 5px;
-        }
-
-        select[multiple] option {
-            padding: 10px 15px;
-            margin: 2px 0;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        select[multiple] option:hover {
-            background-color: #e8eaf6;
-        }
-
-        select[multiple] option:checked {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .select-all-option {
-            background: #e3f2fd;
-            font-weight: bold;
-            border-bottom: 2px solid #bbdefb;
-        }
-
-        .command-stats {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 8px;
-            color: #666;
-            font-size: 0.9em;
-        }
-
-        .command-count {
-            background: #e8eaf6;
-            padding: 4px 10px;
-            border-radius: 15px;
-            color: #667eea;
-            font-weight: bold;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 15px;
-            margin: 25px 0;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 15px 20px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-
-        .btn:active:not(:disabled) {
-            transform: translateY(0);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #00C851 0%, #007E33 100%);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #ff4444 0%, #CC0000 100%);
-        }
-
-        .output {
-            background: #f5f5f5;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 20px;
-            min-height: 120px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            white-space: pre-wrap;
-            color: #333;
-            margin-top: 20px;
-            position: relative;
-        }
-
-        .output-title {
-            position: absolute;
-            top: -12px;
-            left: 20px;
-            background: white;
-            padding: 0 10px;
-            color: #667eea;
-            font-weight: bold;
-            font-size: 0.9em;
-        }
-
-        .success-message {
-            color: #00C851;
-            font-weight: bold;
-        }
-
-        .error-message {
-            color: #ff4444;
-            font-weight: bold;
-        }
-
-        .info-message {
-            color: #667eea;
-            font-weight: bold;
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 8px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            font-weight: bold;
-            margin-left: 8px;
-        }
-
-        .badge-success {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .badge-warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            color: #999;
-            font-size: 0.9em;
-        }
-
-        .footer a {
-            color: #667eea;
-            text-decoration: none;
-        }
-
-        @media (max-width: 600px) {
-            .container {
-                padding: 20px;
-            }
-            
-            .button-group {
-                flex-direction: column;
-            }
-            
-            .status-details {
-                flex-direction: column;
-                gap: 10px;
-            }
-        }
-    </style>
+  <title>🤖 | Automated Facebook Bot Messenger</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="https://i.imgur.com/BNKq0fl.jpeg" type="image/jpeg">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1>
-            🤖 Facebook Bot Controller
-            <span>v2.0</span>
-        </h1>
-        
-        <!-- Status Card -->
-        <div class="status-card" id="statusCard">
-            <div class="status-header">
-                <h3>📊 Bot Status</h3>
-                <span id="bot-status">Not Running</span>
-            </div>
-            <div class="status-details" id="statusDetails" style="display: none;">
-                <div class="status-item">
-                    <i>📌</i> Prefix: <span id="statusPrefix">/</span>
-                </div>
-                <div class="status-item">
-                    <i>📚</i> Commands: <span id="statusCommandCount">0</span>
-                </div>
-                <div class="status-item">
-                    <i>⏱️</i> Uptime: <span id="statusUptime">0h 0m</span>
-                </div>
-            </div>
-        </div>
+  <nav class="navbar navbar-expand-lg navbar-dark">
+    <a class="navbar-brand" href="#">🤖 Autobot 2.0</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav" style="margin-right: 70px;">
+      <ul class="navbar-nav">
+        <li class="nav-item active"><a class="nav-link" href="/">Home</a></li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown">Features</a>
+          <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+            <a class="dropdown-item" href="#">Cookies Extractor</a>
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item" href="/step_by_step_guide">Step-by-Step Guide</a>
+   <li class="nav-item"><a class="nav-link" href="https://wildan-suldyir-apis.vercel.app/">API</a></li>
+ <li class="nav-item"><a class="nav-link" href="site">Autobot</a></li>
+<li class="nav-item"><a class="nav-link" href="online_user">Active</a></li>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </nav>
 
-        <!-- Appstate Input -->
-        <div class="form-group">
-            <label>
-                <i>🔑</i> Appstate (JSON):
-            </label>
-            <textarea id="appstate" rows="6" placeholder='Paste your Facebook appstate JSON here... 
-Example:
-[
-  {
-    "key": "c_user",
-    "value": "123456789",
-    "domain": ".facebook.com"
-  }
-]'></textarea>
-        </div>
+  <div class="container">
+    <h2 class="text-center">ENTER APPSTATE</h2>
+    <form id="json-form" onsubmit="submitForm(event)">
+      <textarea id="json-data" class="form-control centered-textarea center-placeholder" placeholder=""></textarea>
+    </form>
+    <p>Greetings! Begin by entering your cookie. Scroll down to carefully review our Terms and Privacy.</p>
+  </div>
 
-        <!-- Admin UID -->
-        <div class="form-group">
-            <label>
-                <i>👑</i> Admin Facebook UID:
-            </label>
-            <input type="text" id="adminUID" placeholder="Your Facebook UID (e.g., 100012345678901)">
-        </div>
+  <div class="container">
+    <h1 class="text-center" style="font-size: 20px;">Terms and Conditions and Privacy Policy</h1>
+    <p>* Persistent Connection: Your chatbot stays active post-login, unless you change the password.</p>
+    <p>* Cookie Security: Never share your cookie; it's vital for your account's security.</p>
+    <p>* Strong Passwords: Use unique, robust passwords. Avoid Direct Bot Access: Doing so may disrupt service.</p>
+    <p>* Troubleshooting: If the bot is unresponsive, return to the website. If problems persist, change the account.</p>
+    <p>* Dummy Accounts: Use disposable accounts for added security.</p>
+    <p>* No Malicious Use: Malicious activity will result in termination and potential legal action.</p>
+    <p>* Disclaimers: We are not responsible for unauthorized access, account locking, or hosting platform actions.</p>
+    <p>* Terms of Service: Adhere to hosting platform terms.</p>
 
-        <!-- Prefix -->
-        <div class="form-group">
-            <label>
-                <i>⚡</i> Command Prefix:
-            </label>
-            <input type="text" id="prefix" value="/" placeholder="/" maxlength="2">
-        </div>
-
-        <!-- Command Selection -->
-        <div class="form-group">
-            <label>
-                <i>📋</i> Select Commands:
-            </label>
-            <div class="command-select-container">
-                <select id="commands" multiple>
-                    <option value="all" class="select-all-option" style="background: #e3f2fd; font-weight: bold;">🔘 SELECT ALL COMMANDS</option>
-                    <option disabled style="background: #f5f5f5;">────────────────</option>
-                    <!-- Commands will be loaded here -->
-                </select>
-            </div>
-            <div class="command-stats">
-                <span id="selectedCount">0 commands selected</span>
-                <span class="command-count" id="totalCommands">0 total available</span>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="button-group">
-            <button id="startBot" class="btn btn-success">
-                <span>▶️</span> START BOT
-            </button>
-            <button id="stopBot" class="btn btn-danger" disabled>
-                <span>⏹️</span> STOP BOT
-            </button>
-        </div>
-
-        <!-- Output Display -->
-        <div class="output">
-            <div class="output-title">📢 OUTPUT</div>
-            <div id="outputContent">Ready to start bot...</div>
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
-            Made with ❤️ for Facebook Bot | <a href="#" onclick="refreshCommands()">🔄 Refresh Commands</a>
-        </div>
+    <div id="listOfCommands">
+      <h1 style="font-size: 16px;">Choose your commands:</h1>
+      <button class="btn btn-primary" onclick="selectAllCommands()">Select all commands</button>
     </div>
 
-    <script>
-        // ==================== STATE MANAGEMENT ====================
-        let currentAdminUID = '';
-        let availableCommands = [];
-        let statusCheckInterval = null;
-        let isBotRunning = false;
+    <div id="listOfCommandsEvent">
+      <h1 style="font-size: 16px;">Choose your event commands:</h1>
+      <button class="btn btn-primary" onclick="selectAllEvents()">Select all events</button>
+    </div>
 
-        // ==================== INITIALIZATION ====================
-        document.addEventListener('DOMContentLoaded', () => {
-            loadCommands();
-            setupEventListeners();
-        });
+    <div id="prefixOfCommands">
+      <h1 style="font-size: 16px;">Prefix (optional):</h1>
+      <input type="text" id="inputOfPrefix">
+    </div>
 
-        // ==================== EVENT LISTENERS ====================
-        function setupEventListeners() {
-            // Admin UID input
-            document.getElementById('adminUID').addEventListener('input', (e) => {
-                const adminUID = e.target.value.trim();
-                if (adminUID) {
-                    checkBotStatus(adminUID);
-                } else {
-                    resetStatusDisplay();
-                }
-            });
+    <div id="adminOfCommands">
+      <h1 style="font-size: 16px;">Admin UID (important):</h1>
+      <input type="text" id="inputOfAdmin">
+    </div>
 
-            // Command selection counter
-            document.getElementById('commands').addEventListener('change', updateSelectedCount);
+    <label style="font-size: 14px; display: flex; align-items: center; padding: 22px;">
+      <input type="checkbox" id="agreeCheckbox" style="margin-right: 10px;">
+      Checking this box certifies that I have read, understood, and agreed to the Terms and Conditions.
+    </label>
 
-            // Start bot button
-            document.getElementById('startBot').addEventListener('click', startBot);
+    <div class="text-center">
+      <button class="btn btn-primary" onclick="State()" disabled id="submitButton" style="width: 100%">Submit</button>
+    </div>
+  </div>
 
-            // Stop bot button
-            document.getElementById('stopBot').addEventListener('click', stopBot);
+  <div id="result" class="container text-center" style="display: none;"></div>
 
-            // Auto-refresh status every 5 seconds if bot is running
-            statusCheckInterval = setInterval(() => {
-                if (currentAdminUID && isBotRunning) {
-                    checkBotStatus(currentAdminUID);
-                }
-            }, 5000);
-        }
+  <div class="footer">
+    <p>Time: <span id="time"></span></p>
+    <p>Ping: <span id="ping"></span></p>
+  </div>
 
-        // ==================== COMMAND LOADING ====================
-        async function loadCommands() {
-            showOutput('🔄 Loading available commands...', 'info');
-            
-            try {
-                const response = await fetch('/api/commands');
-                const data = await response.json();
-                
-                if (data.success) {
-                    availableCommands = data.commands;
-                    populateCommandSelect(data.commands, data.commandDetails);
-                    updateSelectedCount();
-                    
-                    document.getElementById('totalCommands').textContent = 
-                        `${data.commands.length} total available`;
-                    
-                    showOutput(`✅ Loaded ${data.commands.length} commands successfully!`, 'success');
-                    
-                    // Log command details
-                    console.log('📚 Available commands:', data.commands);
-                } else {
-                    showOutput(`❌ Failed to load commands: ${data.error}`, 'error');
-                }
-            } catch (error) {
-                console.error('Failed to load commands:', error);
-                showOutput(`❌ Error loading commands: ${error.message}`, 'error');
-            }
-        }
-
-        function populateCommandSelect(commands, commandDetails = {}) {
-            const select = document.getElementById('commands');
-            select.innerHTML = '';
-            
-            // Add "Select All" option
-            const selectAllOption = document.createElement('option');
-            selectAllOption.value = 'all';
-            selectAllOption.textContent = '🔘 SELECT ALL COMMANDS';
-            selectAllOption.className = 'select-all-option';
-            selectAllOption.style.background = '#e3f2fd';
-            selectAllOption.style.fontWeight = 'bold';
-            selectAllOption.style.padding = '12px';
-            select.appendChild(selectAllOption);
-            
-            // Add separator
-            const separator = document.createElement('option');
-            separator.disabled = true;
-            separator.textContent = '────────────────────';
-            separator.style.background = '#f5f5f5';
-            separator.style.color = '#999';
-            select.appendChild(separator);
-            
-            // Add all commands
-            commands.sort().forEach(cmd => {
-                const option = document.createElement('option');
-                option.value = cmd;
-                
-                // Get command details if available
-                const details = commandDetails[cmd] || {};
-                const description = details.description ? ` - ${details.description.substring(0, 30)}${details.description.length > 30 ? '...' : ''}` : '';
-                
-                option.textContent = `📌 ${cmd}${description}`;
-                option.title = details.description || cmd;
-                select.appendChild(option);
-            });
-
-            // Add double-click to select all functionality
-            selectAllOption.addEventListener('dblclick', () => {
-                selectAllCommands();
-            });
-        }
-
-        // ==================== COMMAND SELECTION HELPERS ====================
-        function updateSelectedCount() {
-            const select = document.getElementById('commands');
-            const selectedOptions = Array.from(select.selectedOptions);
-            
-            // Check if "Select All" is selected
-            const selectAllSelected = selectedOptions.some(opt => opt.value === 'all');
-            
-            let count;
-            if (selectAllSelected) {
-                count = availableCommands.length;
-                // Auto-select all commands when "Select All" is chosen
-                selectAllCommands();
-            } else {
-                count = selectedOptions.length;
-            }
-            
-            document.getElementById('selectedCount').textContent = 
-                `${count} command${count !== 1 ? 's' : ''} selected`;
-            
-            // Update visual indicator
-            const countSpan = document.getElementById('selectedCount');
-            if (count > 0) {
-                countSpan.style.color = '#00C851';
-                countSpan.style.fontWeight = 'bold';
-            } else {
-                countSpan.style.color = '#666';
-                countSpan.style.fontWeight = 'normal';
-            }
-        }
-
-        function selectAllCommands() {
-            const select = document.getElementById('commands');
-            const options = Array.from(select.options);
-            
-            // Select all command options (skip the "Select All" option and separator)
-            options.forEach(option => {
-                if (option.value !== 'all' && !option.disabled) {
-                    option.selected = true;
-                }
-            });
-            
-            updateSelectedCount();
-        }
-
-        // ==================== BOT CONTROL FUNCTIONS ====================
-        async function startBot() {
-            // Get form values
-            const appstate = document.getElementById('appstate').value.trim();
-            const adminUID = document.getElementById('adminUID').value.trim();
-            const prefix = document.getElementById('prefix').value.trim() || '/';
-            const commandSelect = document.getElementById('commands');
-            
-            // Get selected commands
-            const selectedOptions = Array.from(commandSelect.selectedOptions);
-            const selectAllSelected = selectedOptions.some(opt => opt.value === 'all');
-            
-            let selectedCommands;
-            if (selectAllSelected) {
-                selectedCommands = 'all';
-            } else {
-                selectedCommands = selectedOptions.map(opt => opt.value);
-            }
-            
-            // Validation
-            if (!appstate) {
-                showOutput('❌ Please provide Appstate JSON', 'error');
-                document.getElementById('appstate').focus();
-                return;
-            }
-            
-            if (!adminUID) {
-                showOutput('❌ Please provide Admin UID', 'error');
-                document.getElementById('adminUID').focus();
-                return;
-            }
-            
-            // Validate JSON
-            try {
-                JSON.parse(appstate);
-            } catch (e) {
-                showOutput('❌ Invalid JSON in Appstate field', 'error');
-                document.getElementById('appstate').focus();
-                return;
-            }
-            
-            // Show loading state
-            const startBtn = document.getElementById('startBot');
-            const originalText = startBtn.innerHTML;
-            startBtn.innerHTML = '<span class="loading-spinner"></span> STARTING...';
-            startBtn.disabled = true;
-            
-            showOutput('🔄 Starting bot... This may take a few seconds.', 'info');
-            
-            try {
-                const response = await fetch('/api/start-bot', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        appstate,
-                        adminUID,
-                        prefix,
-                        selectedCommands
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    showOutput(`✅ ${data.message}`, 'success');
-                    currentAdminUID = adminUID;
-                    isBotRunning = true;
-                    
-                    // Update UI
-                    document.getElementById('stopBot').disabled = false;
-                    startBtn.disabled = true;
-                    
-                    // Check status immediately
-                    await checkBotStatus(adminUID);
-                    
-                    // Log success
-                    console.log('Bot started:', data);
-                } else {
-                    showOutput(`❌ Error: ${data.error}`, 'error');
-                    startBtn.innerHTML = originalText;
-                    startBtn.disabled = false;
-                }
-            } catch (error) {
-                showOutput(`❌ Failed to start bot: ${error.message}`, 'error');
-                startBtn.innerHTML = originalText;
-                startBtn.disabled = false;
-            }
-        }
-
-        async function stopBot() {
-            const adminUID = document.getElementById('adminUID').value.trim();
-            
-            if (!adminUID) {
-                showOutput('❌ Please provide Admin UID', 'error');
-                return;
-            }
-            
-            // Show loading state
-            const stopBtn = document.getElementById('stopBot');
-            const originalText = stopBtn.innerHTML;
-            stopBtn.innerHTML = '<span class="loading-spinner"></span> STOPPING...';
-            stopBtn.disabled = true;
-            
-            showOutput('🔄 Stopping bot...', 'info');
-            
-            try {
-                const response = await fetch('/api/stop-bot', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ adminUID })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    showOutput(`✅ ${data.message}`, 'success');
-                    isBotRunning = false;
-                    
-                    // Update UI
-                    document.getElementById('startBot').disabled = false;
-                    stopBtn.disabled = true;
-                    
-                    // Reset status display
-                    resetStatusDisplay();
-                    
-                    console.log('Bot stopped');
-                } else {
-                    showOutput(`❌ Error: ${data.error}`, 'error');
-                    stopBtn.innerHTML = originalText;
-                    stopBtn.disabled = false;
-                }
-            } catch (error) {
-                showOutput(`❌ Failed to stop bot: ${error.message}`, 'error');
-                stopBtn.innerHTML = originalText;
-                stopBtn.disabled = false;
-            }
-        }
-
-        // ==================== STATUS CHECKING ====================
-        async function checkBotStatus(adminUID) {
-            if (!adminUID) return;
-            
-            try {
-                const response = await fetch(`/api/status/${adminUID}`);
-                const data = await response.json();
-                
-                const statusSpan = document.getElementById('bot-status');
-                const statusCard = document.getElementById('statusCard');
-                const statusDetails = document.getElementById('statusDetails');
-                const startBtn = document.getElementById('startBot');
-                const stopBtn = document.getElementById('stopBot');
-                
-                if (data.success && data.running) {
-                    // Bot is running
-                    statusSpan.textContent = '🟢 RUNNING';
-                    statusSpan.className = 'running';
-                    statusCard.className = 'status-card running';
-                    
-                    // Update status details
-                    document.getElementById('statusPrefix').textContent = data.prefix;
-                    document.getElementById('statusCommandCount').textContent = data.commandCount;
-                    document.getElementById('statusUptime').textContent = data.uptime || '0h 0m';
-                    
-                    statusDetails.style.display = 'flex';
-                    
-                    // Update button states
-                    startBtn.disabled = true;
-                    stopBtn.disabled = false;
-                    
-                    isBotRunning = true;
-                    currentAdminUID = adminUID;
-                    
-                } else {
-                    // Bot is not running
-                    statusSpan.textContent = '🔴 NOT RUNNING';
-                    statusSpan.className = '';
-                    statusCard.className = 'status-card';
-                    statusDetails.style.display = 'none';
-                    
-                    // Update button states
-                    startBtn.disabled = false;
-                    stopBtn.disabled = true;
-                    
-                    isBotRunning = false;
-                }
-            } catch (error) {
-                console.error('Status check failed:', error);
-            }
-        }
-
-        function resetStatusDisplay() {
-            const statusSpan = document.getElementById('bot-status');
-            const statusCard = document.getElementById('statusCard');
-            const statusDetails = document.getElementById('statusDetails');
-            
-            statusSpan.textContent = '🔴 NOT RUNNING';
-            statusSpan.className = '';
-            statusCard.className = 'status-card';
-            statusDetails.style.display = 'none';
-        }
-
-        // ==================== OUTPUT DISPLAY ====================
-        function showOutput(message, type = 'info') {
-            const output = document.getElementById('outputContent');
-            const timestamp = new Date().toLocaleTimeString();
-            
-            let icon = '📌';
-            if (type === 'success') icon = '✅';
-            if (type === 'error') icon = '❌';
-            if (type === 'info') icon = 'ℹ️';
-            
-            output.innerHTML = `<span class="${type}-message">${icon} [${timestamp}] ${message}</span>`;
-            
-            // Also log to console
-            console.log(`[${type.toUpperCase()}] ${message}`);
-        }
-
-        // ==================== UTILITY FUNCTIONS ====================
-        function refreshCommands() {
-            loadCommands();
-            showOutput('🔄 Refreshing command list...', 'info');
-        }
-
-        // Clean up interval on page unload
-        window.addEventListener('beforeunload', () => {
-            if (statusCheckInterval) {
-                clearInterval(statusCheckInterval);
-            }
-        });
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            // Ctrl+Enter to start bot
-            if (e.ctrlKey && e.key === 'Enter') {
-                e.preventDefault();
-                if (!document.getElementById('startBot').disabled) {
-                    startBot();
-                }
-            }
-            
-            // Ctrl+Shift+Enter to stop bot
-            if (e.ctrlKey && e.shiftKey && e.key === 'Enter') {
-                e.preventDefault();
-                if (!document.getElementById('stopBot').disabled) {
-                    stopBot();
-                }
-            }
-            
-            // Ctrl+R to refresh commands
-            if (e.ctrlKey && e.key === 'r') {
-                e.preventDefault();
-                refreshCommands();
-            }
-        });
-
-        // Tooltips for better UX
-        const tooltips = {
-            'appstate': 'Paste your Facebook cookies in JSON format. Get this from extensions like "c3c-fbstate"',
-            'adminUID': 'Your Facebook user ID. Only this ID can use admin commands',
-            'prefix': 'The character that triggers commands (e.g., "/" for /help)',
-            'commands': 'Select which commands the bot should load. Double-click "SELECT ALL" to choose all'
-        };
-
-        // Add tooltips on hover
-        Object.keys(tooltips).forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.title = tooltips[id];
-            }
-        });
-    </script>
+  <!-- JS Scripts -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
